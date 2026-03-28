@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#0c4a6e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="cam-body" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="lens-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="robot-body" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a5b4fc"/>
+      <stop offset="100%" stop-color="#67e8f9"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="strong-glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="bg-clip">
+      <rect x="16" y="16" width="480" height="480" rx="96" ry="96"/>
+    </clipPath>
+  </defs>
+
+  <!-- 背景 -->
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#bg)"/>
+
+  <g clip-path="url(#bg-clip)">
+
+    <!-- 背景网格 -->
+    <g stroke="#334155" stroke-width="0.5" opacity="0.25">
+      <line x1="16" y1="128" x2="496" y2="128"/>
+      <line x1="16" y1="256" x2="496" y2="256"/>
+      <line x1="16" y1="384" x2="496" y2="384"/>
+      <line x1="128" y1="16" x2="128" y2="496"/>
+      <line x1="256" y1="16" x2="256" y2="496"/>
+      <line x1="384" y1="16" x2="384" y2="496"/>
+    </g>
+
+    <!-- ========== 监控摄像头 (左上区域) ========== -->
+
+    <!-- 摄像头安装支架（墙壁连接） -->
+    <rect x="68" y="80" width="24" height="56" rx="4" fill="#64748b" opacity="0.9"/>
+    <!-- 支架底板 -->
+    <rect x="56" y="72" width="48" height="14" rx="3" fill="#94a3b8" opacity="0.8"/>
+
+    <!-- 旋转关节 -->
+    <circle cx="80" cy="140" r="14" fill="#475569" stroke="#64748b" stroke-width="2"/>
+    <circle cx="80" cy="140" r="6" fill="#334155"/>
+
+    <!-- 摄像头连接臂 -->
+    <line x1="92" y1="140" x2="148" y2="172" stroke="#64748b" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- 摄像头筒身 -->
+    <rect x="136" y="148" width="140" height="56" rx="10" fill="url(#cam-body)" stroke="#64748b" stroke-width="2"/>
+
+    <!-- 筒身顶部高光条 -->
+    <rect x="144" y="152" width="120" height="3" rx="1.5" fill="#94a3b8" opacity="0.3"/>
+
+    <!-- 筒身细节 - 散热纹 -->
+    <g stroke="#64748b" stroke-width="1" opacity="0.3">
+      <line x1="240" y1="156" x2="240" y2="196"/>
+      <line x1="248" y1="156" x2="248" y2="196"/>
+      <line x1="256" y1="156" x2="256" y2="196"/>
+    </g>
+
+    <!-- IR灯（红外指示灯） -->
+    <circle cx="264" cy="164" r="3" fill="#ef4444" opacity="0.8"/>
+    <circle cx="264" cy="164" r="6" fill="#ef4444" opacity="0.15" filter="url(#glow)"/>
+
+    <!-- 镜头遮光罩 -->
+    <path d="M136 152 L108 138 L108 210 L136 198" fill="#334155" stroke="#475569" stroke-width="1.5"/>
+
+    <!-- 镜头外圈 -->
+    <circle cx="110" cy="176" r="28" fill="#1e293b" stroke="url(#accent)" stroke-width="2.5"/>
+
+    <!-- 镜头光圈 -->
+    <circle cx="110" cy="176" r="20" fill="url(#lens-grad)" opacity="0.7"/>
+
+    <!-- 镜头瞳孔 -->
+    <circle cx="110" cy="176" r="12" fill="#0f172a"/>
+
+    <!-- 镜头内部反射 -->
+    <circle cx="110" cy="176" r="8" fill="url(#lens-grad)" opacity="0.3"/>
+
+    <!-- 镜头高光 -->
+    <circle cx="104" cy="170" r="5" fill="#fff" opacity="0.35"/>
+    <circle cx="116" cy="182" r="2.5" fill="#fff" opacity="0.15"/>
+
+    <!-- 监控扫描光束（从镜头发出的三角形光锥） -->
+    <path d="M88 168 L40 80 L40 268 Z" fill="url(#accent)" opacity="0.06"/>
+    <path d="M88 168 L50 100 L50 248 Z" fill="url(#accent)" opacity="0.04"/>
+
+    <!-- ========== 机器人 (右下区域) ========== -->
+
+    <!-- 机器人脑袋 -->
+    <rect x="320" y="280" width="128" height="100" rx="24" fill="#1e293b" stroke="url(#robot-body)" stroke-width="2.5"/>
+
+    <!-- 头顶天线 -->
+    <line x1="384" y1="280" x2="384" y2="252" stroke="url(#robot-body)" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="384" cy="246" r="8" fill="url(#accent)" opacity="0.8" filter="url(#glow)"/>
+    <circle cx="384" cy="246" r="4" fill="#e0e7ff"/>
+
+    <!-- 左侧小天线 -->
+    <line x1="344" y1="284" x2="328" y2="260" stroke="#67e8f9" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <circle cx="326" cy="257" r="4" fill="#67e8f9" opacity="0.7"/>
+
+    <!-- 右侧小天线 -->
+    <line x1="424" y1="284" x2="440" y2="260" stroke="#818cf8" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <circle cx="442" cy="257" r="4" fill="#818cf8" opacity="0.7"/>
+
+    <!-- 左眼 -->
+    <circle cx="356" cy="320" r="16" fill="#0f172a" stroke="url(#accent)" stroke-width="2"/>
+    <circle cx="356" cy="320" r="9" fill="url(#lens-grad)" opacity="0.8" filter="url(#glow)"/>
+    <circle cx="356" cy="320" r="4" fill="#e0e7ff"/>
+    <circle cx="352" cy="316" r="2.5" fill="#fff" opacity="0.5"/>
+
+    <!-- 右眼 -->
+    <circle cx="412" cy="320" r="16" fill="#0f172a" stroke="url(#accent)" stroke-width="2"/>
+    <circle cx="412" cy="320" r="9" fill="url(#lens-grad)" opacity="0.8" filter="url(#glow)"/>
+    <circle cx="412" cy="320" r="4" fill="#e0e7ff"/>
+    <circle cx="408" cy="316" r="2.5" fill="#fff" opacity="0.5"/>
+
+    <!-- 嘴巴 - LED点阵风格 -->
+    <g fill="url(#accent)" opacity="0.7">
+      <rect x="356" y="352" width="6" height="6" rx="1.5"/>
+      <rect x="368" y="352" width="6" height="6" rx="1.5"/>
+      <rect x="380" y="352" width="6" height="6" rx="1.5"/>
+      <rect x="392" y="352" width="6" height="6" rx="1.5"/>
+      <rect x="404" y="352" width="6" height="6" rx="1.5"/>
+    </g>
+
+    <!-- 脸颊装饰线 -->
+    <line x1="328" y1="310" x2="328" y2="345" stroke="url(#accent)" stroke-width="1.5" opacity="0.3" stroke-linecap="round"/>
+    <line x1="440" y1="310" x2="440" y2="345" stroke="url(#accent)" stroke-width="1.5" opacity="0.3" stroke-linecap="round"/>
+
+    <!-- 机器人脖子 -->
+    <rect x="368" y="380" width="32" height="14" rx="3" fill="#334155" stroke="url(#robot-body)" stroke-width="1.5"/>
+
+    <!-- 机器人肩膀（暗示身体） -->
+    <rect x="308" y="394" width="152" height="40" rx="12" fill="#1e293b" stroke="url(#robot-body)" stroke-width="2" opacity="0.7"/>
+
+    <!-- 肩膀上的灯 -->
+    <circle cx="324" cy="414" r="4" fill="#22d3ee" opacity="0.6" filter="url(#glow)"/>
+    <circle cx="444" cy="414" r="4" fill="#818cf8" opacity="0.6" filter="url(#glow)"/>
+
+    <!-- ========== 连接元素：摄像头与机器人之间的数据流 ========== -->
+
+    <!-- 数据流光线 -->
+    <g stroke="url(#accent)" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.4">
+      <path d="M270 186 C320 220, 340 260, 348 280" fill="none"/>
+      <path d="M260 200 C310 240, 360 270, 384 280" fill="none"/>
+    </g>
+
+    <!-- 数据流上的粒子 -->
+    <circle cx="300" cy="220" r="2.5" fill="#22d3ee" opacity="0.7" filter="url(#glow)"/>
+    <circle cx="330" cy="250" r="2" fill="#818cf8" opacity="0.6" filter="url(#glow)"/>
+    <circle cx="350" cy="268" r="2.5" fill="#67e8f9" opacity="0.5" filter="url(#glow)"/>
+
+    <!-- 四角检测框 -->
+    <g stroke="#22d3ee" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.5">
+      <path d="M52 96 L52 56 L92 56"/>
+      <path d="M460 56 L420 56 M460 56 L460 96"/>
+      <path d="M52 460 L52 420 M52 460 L92 460"/>
+      <path d="M460 460 L420 460 M460 460 L460 420"/>
+    </g>
+
+  </g>
+</svg>

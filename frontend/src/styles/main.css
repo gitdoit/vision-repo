@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* ===== Design System Tokens from Stitch Prototype ===== */
+@theme {
+  --color-bg-base: #060e20;
+  --color-bg-floor: #091328;
+  --color-bg-card: #0f1930;
+  --color-bg-active: #192540;
+  --color-bg-elevated: #141f38;
+  --color-bg-void: #000000;
+  --color-bg-bright: #1f2b49;
+
+  --color-primary: #8ff5ff;
+  --color-primary-container: #00eefc;
+  --color-primary-dim: #00deec;
+
+  --color-secondary: #d8e3fb;
+  --color-secondary-container: #3c475a;
+  --color-secondary-dim: #cad5ed;
+
+  --color-tertiary: #65afff;
+  --color-tertiary-container: #4aa2f9;
+
+  --color-error: #ff716c;
+  --color-error-container: #9f0519;
+
+  --color-on-surface: #dee5ff;
+  --color-on-surface-variant: #a3aac4;
+  --color-on-primary: #005d63;
+
+  --color-outline: #6d758c;
+  --color-outline-variant: #40485d;
+
+  --color-surface-tint: #8ff5ff;
+}
+
+/* ===== Base Styles ===== */
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-on-surface);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Space Grotesk for headlines */
+h1, h2, h3 {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-floor);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
