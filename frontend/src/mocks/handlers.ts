@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import {
   dashboardStats, weeklyTrend, alertRanking, realtimeAlerts,
   cameras, cameraGroups, models, rules, inferenceRecords,
+  videoPlatforms,
 } from './data'
 
 const BASE = '/api/v1'
@@ -23,6 +24,18 @@ export const handlers = [
   http.post(`${BASE}/cameras`, () => HttpResponse.json(cameras[0], { status: 201 })),
   http.put(`${BASE}/cameras/:id`, () => HttpResponse.json(cameras[0])),
   http.delete(`${BASE}/cameras/:id`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE}/cameras/import`, () => HttpResponse.json({ success: 3, failed: 0 })),
+
+  // Video Platforms
+  http.get(`${BASE}/video-platforms`, () => HttpResponse.json(videoPlatforms)),
+  http.post(`${BASE}/video-platforms`, () => HttpResponse.json(videoPlatforms[0], { status: 201 })),
+  http.put(`${BASE}/video-platforms/:id`, () => HttpResponse.json(videoPlatforms[0])),
+  http.delete(`${BASE}/video-platforms/:id`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE}/video-platforms/:id/test`, () => HttpResponse.json({ connected: true, message: '连接成功，发现 45 个通道' })),
+  http.post(`${BASE}/video-platforms/:id/sync`, () => HttpResponse.json({
+    total: 45, added: 2, updated: 1, removed: 0, failed: 0,
+    syncTime: new Date().toISOString(),
+  })),
 
   // Models
   http.get(`${BASE}/models`, () => HttpResponse.json(models)),

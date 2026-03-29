@@ -1,4 +1,8 @@
 /* Types */
+
+/** 摄像头来源：手动添加 / 视频平台同步 */
+export type CameraSource = 'manual' | 'synced'
+
 export interface Camera {
   id: string
   name: string
@@ -11,6 +15,12 @@ export interface Camera {
   lastCaptureTime: string
   groupId: string
   recentTasks: TaskStatus[]
+  /** 来源 */
+  source: CameraSource
+  /** 关联的视频平台ID（synced 时有值） */
+  platformId?: string
+  /** 视频平台中的通道编号 */
+  channelNo?: string
 }
 
 export interface TaskStatus {
@@ -24,6 +34,39 @@ export interface CameraGroup {
   icon: string
   cameraCount: number
   children?: CameraGroup[]
+}
+
+/** 视频平台配置 */
+export interface VideoPlatform {
+  id: string
+  name: string
+  /** 平台 API 基础地址 */
+  apiBase: string
+  /** 认证方式 */
+  authType: 'token' | 'basic' | 'none'
+  /** 凭证（token 或 user:pass） */
+  credential: string
+  /** 自动同步开关 */
+  autoSync: boolean
+  /** 同步间隔（分钟） */
+  syncIntervalMin: number
+  /** 上次同步时间 */
+  lastSyncTime?: string
+  /** 上次同步结果 */
+  lastSyncResult?: SyncResult
+  /** 同步过来的摄像头数量 */
+  camerasCount: number
+  status: 'connected' | 'disconnected' | 'syncing'
+}
+
+/** 同步结果 */
+export interface SyncResult {
+  total: number
+  added: number
+  updated: number
+  removed: number
+  failed: number
+  syncTime: string
 }
 
 export interface Model {

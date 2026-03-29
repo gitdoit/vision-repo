@@ -1,0 +1,121 @@
+# Docker Compose - Full Deployment (with MinIO)
+# Usage: docker compose --profile full up -d --build
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vision-postgres
+    environment:
+      POSTGRES_DB: vision
+      POSTGRES_USER: ${DB_USER:-vision}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vision123}
+      TZ: Asia/Shanghai
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-vision}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vision-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: vision-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      TZ: Asia/Shanghai
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - full
+    networks:
+      - vision-network
+
+  vision-admin:
+    build:
+      context: ./vision-admin
+      dockerfile: Dockerfile
+    container_name: vision-admin
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: vision
+      DB_USER: ${DB_USER:-vision}
+      DB_PASSWORD: ${DB_PASSWORD:-vision123}
+      INFERENCE_SERVICE_URL: http://vision-inference:5000
+      VISION_STORAGE_TYPE: ${STORAGE_TYPE:-local}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      TZ: Asia/Shanghai
+    volumes:
+      - file_data:/data/vision/files
+      - model_data:/data/vision/models
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vision-inference:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - vision-network
+
+  vision-inference:
+    build:
+      context: ./vision-inference
+      dockerfile: Dockerfile
+    container_name: vision-inference
+    environment:
+      MODEL_BASE_PATH: /data/vision/models
+      DEVICE: ${INFERENCE_DEVICE:-cpu}
+      TZ: Asia/Shanghai
+    volumes:
+      - model_data:/data/vision/models
+      - file_data:/data/vision/files
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - vision-network
+
+volumes:
+  pg_data:
+    driver: local
+  minio_data:
+    driver: local
+  file_data:
+    driver: local
+  model_data:
+    driver: local
+
+networks:
+  vision-network:
+    driver: bridge

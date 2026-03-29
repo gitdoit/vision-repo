@@ -1,0 +1,27 @@
+# 开发环境配置
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/vision
+    username: vision
+    password: vision123
+
+# Vision 开发环境配置
+vision:
+  inference:
+    service-url: http://localhost:5000
+
+  storage:
+    type: local
+    local:
+      base-path: ./data/files
+      base-url: http://localhost:8080/files
+
+  capture:
+    temp-dir: ./tmp/capture
+
+# 日志
+logging:
+  level:
+    com.vision: DEBUG
+    com.baomidou.mybatisplus: DEBUG

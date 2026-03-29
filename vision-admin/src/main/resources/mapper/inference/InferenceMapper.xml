@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vision.inference.mapper.InferenceMapper">
+
+    <resultMap id="BaseResultMap" type="com.vision.inference.entity.InferenceRecord">
+        <id column="id" property="id" jdbcType="VARCHAR"/>
+        <result column="event_id" property="eventId" jdbcType="VARCHAR"/>
+        <result column="camera_id" property="cameraId" jdbcType="VARCHAR"/>
+        <result column="business_type" property="businessType" jdbcType="VARCHAR"/>
+        <result column="avg_confidence" property="avgConfidence" jdbcType="DECIMAL"/>
+        <result column="alert_status" property="alertStatus" jdbcType="VARCHAR"/>
+        <result column="thumbnail_url" property="thumbnailUrl" jdbcType="VARCHAR"/>
+        <result column="original_image_url" property="originalImageUrl" jdbcType="VARCHAR"/>
+        <result column="annotated_image_url" property="annotatedImageUrl" jdbcType="VARCHAR"/>
+        <result column="raw_json" property="rawJson" jdbcType="VARCHAR"/>
+        <result column="model_name" property="modelName" jdbcType="VARCHAR"/>
+        <result column="inference_time_ms" property="inferenceTimeMs" jdbcType="INTEGER"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 分页查询推理记录 -->
+    <select id="selectPageByCondition" resultMap="BaseResultMap">
+        SELECT * FROM inference_record
+        <where>
+            <if test="startTime != null">
+                AND created_at &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND created_at &lt;= #{endTime}
+            </if>
+            <if test="cameraId != null and cameraId != ''">
+                AND camera_id = #{cameraId}
+            </if>
+            <if test="alertStatus != null and alertStatus != ''">
+                AND alert_status = #{alertStatus}
+            </if>
+        </where>
+        ORDER BY created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- 统计时间范围内的推理次数 -->
+    <select id="countByTimeRange" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM inference_record
+        WHERE created_at &gt;= #{startTime}
+          AND created_at &lt;= #{endTime}
+    </select>
+
+    <!-- 统计每日推理次数（用于周趋势） -->
+    <select id="countDailyInRange" resultType="java.util.Map">
+        SELECT DATE(created_at) as date, COUNT(*) as count
+        FROM inference_record
+        WHERE created_at &gt;= #{startDate}
+          AND created_at &lt;= #{endDate}
+        GROUP BY DATE(created_at)
+        ORDER BY date
+    </select>
+
+</mapper>

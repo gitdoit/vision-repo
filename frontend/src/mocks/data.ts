@@ -1,6 +1,6 @@
 import type {
   DashboardStats, WeeklyTrend, BusinessLineAlert, AlertRecord,
-  Camera, CameraGroup, Model, Rule, InferenceRecord
+  Camera, CameraGroup, Model, Rule, InferenceRecord, VideoPlatform
 } from '@/types'
 
 export const dashboardStats: DashboardStats = {
@@ -57,6 +57,7 @@ export const cameras: Camera[] = [
     location: 'Main Gate', streamUrl: 'rtsp://192.168.1.101:554/stream1',
     captureFrequency: '每10分钟一次', aiEnabled: true, status: 'online',
     lastCaptureTime: '2026-10-24 10:30', groupId: 'g1-1',
+    source: 'synced', platformId: 'vp1', channelNo: 'CH-001',
     recentTasks: [
       { time: '10:30', success: true }, { time: '10:20', success: true },
       { time: '10:10', success: false }, { time: '10:00', success: true },
@@ -67,6 +68,7 @@ export const cameras: Camera[] = [
     location: 'Warehouse A', streamUrl: 'rtsp://192.168.1.102:554/stream1',
     captureFrequency: '每10分钟一次', aiEnabled: true, status: 'online',
     lastCaptureTime: '2026-10-24 10:28', groupId: 'g1-2',
+    source: 'synced', platformId: 'vp1', channelNo: 'CH-002',
     recentTasks: [
       { time: '10:28', success: true }, { time: '10:18', success: true },
     ],
@@ -76,6 +78,7 @@ export const cameras: Camera[] = [
     location: 'Parking', streamUrl: 'rtsp://192.168.1.103:554/stream1',
     captureFrequency: '每5分钟一次', aiEnabled: true, status: 'online',
     lastCaptureTime: '2026-10-24 10:25', groupId: 'g2',
+    source: 'manual',
     recentTasks: [
       { time: '10:25', success: true }, { time: '10:20', success: true },
     ],
@@ -85,6 +88,7 @@ export const cameras: Camera[] = [
     location: 'IT Building', streamUrl: 'rtsp://192.168.1.104:554/stream1',
     captureFrequency: '每1分钟一次', aiEnabled: false, status: 'offline',
     lastCaptureTime: '2026-10-24 09:15', groupId: 'g1-3',
+    source: 'manual',
     recentTasks: [],
   },
 ]
@@ -237,5 +241,24 @@ export const inferenceRecords: InferenceRecord[] = [
       detections: [{ label: 'person', confidence: 0.91, bbox: [300, 150, 400, 350] }],
     }, null, 2),
     relatedAlerts: [],
+  },
+]
+
+export const videoPlatforms: VideoPlatform[] = [
+  {
+    id: 'vp1',
+    name: '公司视频管理平台',
+    apiBase: 'http://192.168.10.50:8080/api',
+    authType: 'token',
+    credential: '******',
+    autoSync: true,
+    syncIntervalMin: 30,
+    lastSyncTime: '2026-03-28 09:30:00',
+    lastSyncResult: {
+      total: 45, added: 2, updated: 1, removed: 0, failed: 0,
+      syncTime: '2026-03-28 09:30:00',
+    },
+    camerasCount: 45,
+    status: 'connected',
   },
 ]

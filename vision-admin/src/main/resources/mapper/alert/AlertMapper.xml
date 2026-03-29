@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vision.alert.mapper.AlertMapper">
+
+    <resultMap id="BaseResultMap" type="com.vision.alert.entity.Alert">
+        <id column="id" property="id" jdbcType="VARCHAR"/>
+        <result column="alert_level" property="alertLevel" jdbcType="VARCHAR"/>
+        <result column="alert_type" property="alertType" jdbcType="VARCHAR"/>
+        <result column="scene" property="scene" jdbcType="VARCHAR"/>
+        <result column="camera_id" property="cameraId" jdbcType="VARCHAR"/>
+        <result column="stream_id" property="streamId" jdbcType="VARCHAR"/>
+        <result column="capture_time" property="captureTime" jdbcType="TIMESTAMP"/>
+        <result column="alert_time" property="alertTime" jdbcType="TIMESTAMP"/>
+        <result column="trigger_condition" property="triggerCondition" jdbcType="VARCHAR"/>
+        <result column="related_objects" property="relatedObjects" jdbcType="VARCHAR"/>
+        <result column="evidence" property="evidence" jdbcType="VARCHAR"/>
+        <result column="location" property="location" jdbcType="VARCHAR"/>
+        <result column="rule_id" property="ruleId" jdbcType="VARCHAR"/>
+        <result column="read_status" property="readStatus" jdbcType="BOOLEAN"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 查询告警列表（带摄像头名称） -->
+    <select id="selectAlertsWithCameraName" resultMap="BaseResultMap">
+        SELECT a.*,
+               c.name as camera_name
+        FROM alert a
+        LEFT JOIN camera c ON a.camera_id = c.id
+        <where>
+            <if test="alertLevel != null and alertLevel != ''">
+                AND a.alert_level = #{alertLevel}
+            </if>
+            <if test="alertType != null and alertType != ''">
+                AND a.alert_type = #{alertType}
+            </if>
+            <if test="cameraId != null and cameraId != ''">
+                AND a.camera_id = #{cameraId}
+            </if>
+            <if test="readStatus != null">
+                AND a.read_status = #{readStatus}
+            </if>
+            <if test="startTime != null">
+                AND a.alert_time &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND a.alert_time &lt;= #{endTime}
+            </if>
+        </where>
+        ORDER BY a.alert_time DESC
+    </select>
+
+</mapper>

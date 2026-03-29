@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vision.inference.mapper.DetectionMapper">
+
+    <resultMap id="BaseResultMap" type="com.vision.inference.entity.Detection">
+        <id column="id" property="id" jdbcType="VARCHAR"/>
+        <result column="record_id" property="recordId" jdbcType="VARCHAR"/>
+        <result column="label" property="label" jdbcType="VARCHAR"/>
+        <result column="confidence" property="confidence" jdbcType="DECIMAL"/>
+        <result column="bbox" property="bbox" jdbcType="VARCHAR"/>
+        <result column="count" property="count" jdbcType="INTEGER"/>
+        <result column="attributes" property="attributes" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+</mapper>

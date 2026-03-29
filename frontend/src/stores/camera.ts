@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Camera, CameraGroup } from '@/types'
+import type { Camera, CameraGroup, VideoPlatform, SyncResult } from '@/types'
 import * as cameraApi from '@/api/modules/camera'
 
 export const useCameraStore = defineStore('camera', () => {
@@ -9,6 +9,10 @@ export const useCameraStore = defineStore('camera', () => {
   const total = ref(0)
   const loading = ref(false)
   const selectedGroupId = ref<string | null>(null)
+
+  // 视频平台
+  const platforms = ref<VideoPlatform[]>([])
+  const platformLoading = ref(false)
 
   async function fetchCameras(params?: Record<string, unknown>) {
     loading.value = true
@@ -26,5 +30,26 @@ export const useCameraStore = defineStore('camera', () => {
     groups.value = res
   }
 
-  return { cameras, groups, total, loading, selectedGroupId, fetchCameras, fetchGroups }
+  async function fetchPlatforms() {
+    platformLoading.value = true
+    try {
+      const res = await cameraApi.getVideoPlatforms() as unknown as VideoPlatform[]
+      platforms.value = res
+    } finally {
+      platformLoading.value = false
+    }
+  }
+
+  async function syncPlatform(id: string): Promise<SyncResult> {
+    const res = await cameraApi.syncVideoPlatform(id) as unknown as SyncResult
+    await fetchPlatforms()
+    await fetchCameras()
+    return res
+  }
+
+  return {
+    cameras, groups, total, loading, selectedGroupId,
+    platforms, platformLoading,
+    fetchCameras, fetchGroups, fetchPlatforms, syncPlatform,
+  }
 })
