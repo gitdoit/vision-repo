@@ -15,28 +15,28 @@
     <div class="grid grid-cols-4 gap-4">
       <StatCard
         title="今日分析次数"
-        :value="stats?.todayAnalyses ?? 0"
-        :trend="stats?.todayAnalysesTrend ?? 0"
+        :value="stats?.todayInferenceCount ?? 0"
+        :trend="stats?.todayInferenceChange ?? 0"
         icon="mdi:chart-line"
         trend-label="+15%"
       />
       <StatCard
         title="今日告警数量"
-        :value="stats?.todayAlerts ?? 0"
-        :trend="stats?.todayAlertsTrend ?? 0"
+        :value="stats?.todayAlertCount ?? 0"
+        :trend="stats?.todayAlertChange ?? 0"
         icon="mdi:alert"
         trend-label="-5%"
         trend-type="negative"
       />
       <StatCard
         title="接入摄像头总数"
-        :value="stats?.totalCameras ?? 0"
+        :value="stats?.totalCameraCount ?? 0"
         icon="mdi:video"
         badge="在线"
       />
       <StatCard
         title="启用AI摄像头数"
-        :value="stats?.aiEnabledCameras ?? 0"
+        :value="stats?.aiEnabledCameraCount ?? 0"
         icon="mdi:memory"
         badge="AI处理中"
       />
@@ -48,7 +48,7 @@
       <div class="rounded-xl bg-bg-card p-6">
         <div class="mb-4 flex items-center justify-between">
           <div>
-            <h3 class="text-lg font-semibold">{{ dashboardStore.stats?.weeklyInferenceCount ?? 0 }}</h3>
+            <h3 class="text-lg font-semibold">{{ weeklyTotal }}</h3>
             <p class="text-xs text-on-surface-variant">近7天推理次数趋势</p>
           </div>
         </div>
@@ -143,6 +143,9 @@ onMounted(() => {
 })
 
 const stats = computed(() => dashboardStore.stats)
+const weeklyTotal = computed(() =>
+  dashboardStore.weeklyTrend.reduce((sum, d) => sum + d.count, 0)
+)
 const alertRanking = computed(() => dashboardStore.alertRanking)
 const realtimeAlerts = computed(() => dashboardStore.realtimeAlerts)
 
@@ -151,7 +154,7 @@ const trendChartOption = computed(() => ({
   grid: { top: 10, right: 10, bottom: 24, left: 40 },
   xAxis: {
     type: 'category',
-    data: dashboardStore.weeklyTrend.map(d => d.day),
+    data: dashboardStore.weeklyTrend.map(d => d.date),
     axisLine: { lineStyle: { color: '#40485d' } },
     axisLabel: { color: '#a3aac4', fontSize: 11 },
   },

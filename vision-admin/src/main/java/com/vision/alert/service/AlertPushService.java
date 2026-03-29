@@ -1,6 +1,7 @@
 package com.vision.alert.service;
 
 import com.vision.alert.dto.AlertVO;
+import com.vision.alert.entity.Alert;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -19,6 +20,25 @@ public class AlertPushService {
 
     /**
      * 推送告警到前端
+     */
+    public void pushAlert(Alert alert) {
+        try {
+            AlertVO vo = new AlertVO();
+            vo.setId(alert.getId());
+            vo.setAlertLevel(alert.getAlertLevel());
+            vo.setAlertType(alert.getAlertType());
+            vo.setCameraId(alert.getCameraId());
+            vo.setAlertTime(alert.getAlertTime());
+            vo.setReadStatus(alert.getReadStatus());
+            messagingTemplate.convertAndSend("/topic/alerts", vo);
+            log.debug("推送告警成功: {}", alert.getId());
+        } catch (Exception e) {
+            log.error("推送告警失败: {}", alert.getId(), e);
+        }
+    }
+
+    /**
+     * 推送告警VO到前端
      */
     public void pushAlert(AlertVO alert) {
         try {

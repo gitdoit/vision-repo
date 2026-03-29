@@ -14,6 +14,7 @@ import com.vision.model.mapper.ModelVersionMapper;
 import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 /**
  * 模型服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ModelService extends ServiceImpl<ModelMapper, Model> {
@@ -91,6 +93,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         // 创建版本记录
         createVersionRecord(model.getId(), dto.getVersion(), "初始版本");
 
+        log.info("创建模型成功: id={}, name={}", model.getId(), model.getName());
         return ModelVO.fromEntity(model);
     }
 
@@ -112,6 +115,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         BeanUtils.copyProperties(dto, model);
         modelMapper.updateById(model);
 
+        log.info("更新模型成功: id={}", id);
         return ModelVO.fromEntity(model);
     }
 
@@ -131,6 +135,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         }
 
         modelMapper.deleteById(id);
+        log.info("删除模型成功: id={}", id);
     }
 
     /**
@@ -150,6 +155,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         // 更新状态为加载中
         model.setStatus("loading");
         modelMapper.updateById(model);
+        log.info("开始加载模型: id={}, path={}", id, model.getModelPath());
 
         try {
             // 调用Python推理服务加载模型
@@ -158,9 +164,11 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
             // 更新状态为已加载
             model.setStatus("loaded");
             modelMapper.updateById(model);
+            log.info("模型加载成功: id={}", id);
         } catch (Exception e) {
             model.setStatus("unloaded");
             modelMapper.updateById(model);
+            log.error("模型加载失败: id={}", id, e);
             throw new BizException("模型加载失败: " + e.getMessage());
         }
     }
@@ -186,7 +194,9 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
             // 更新状态
             model.setStatus("unloaded");
             modelMapper.updateById(model);
+            log.info("模型卸载成功: id={}", id);
         } catch (Exception e) {
+            log.error("模型卸载失败: id={}", id, e);
             throw new BizException("模型卸载失败: " + e.getMessage());
         }
     }
@@ -212,6 +222,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         }
 
         modelMapper.updateById(model);
+        log.info("更新模型配置成功: id={}", id);
     }
 
     /**

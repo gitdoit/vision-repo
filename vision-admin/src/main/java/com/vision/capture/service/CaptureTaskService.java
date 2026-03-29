@@ -32,7 +32,7 @@ public class CaptureTaskService {
      *
      * @param message 抓图任务消息
      */
-    @Async("captureTaskExecutor")
+    @Async("captureExecutor")
     public void executeAsync(CaptureMessage message) {
         String cameraId = message.getCameraId();
         String cameraName = message.getCameraName();

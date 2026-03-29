@@ -8,6 +8,7 @@ import com.vision.common.response.PageResult;
 import com.vision.common.response.R;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 /**
  * 推理记录控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/inference")
 @RequiredArgsConstructor
@@ -52,6 +54,7 @@ public class InferenceController {
      */
     @GetMapping("/export/csv")
     public void exportCsv(InferenceQueryDTO dto, HttpServletResponse response) throws IOException {
+        log.info("导出推理记录CSV");
         byte[] data = inferenceService.exportToCsv(dto);
 
         String filename = "inference_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".csv";
@@ -70,6 +73,7 @@ public class InferenceController {
      */
     @GetMapping("/export/excel")
     public void exportExcel(InferenceQueryDTO dto, HttpServletResponse response) throws IOException {
+        log.info("导出推理记录Excel");
         byte[] data = inferenceService.exportToExcel(dto);
 
         String filename = "inference_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".xlsx";
@@ -88,6 +92,7 @@ public class InferenceController {
      */
     @PostMapping("/callback")
     public R<Void> callback(@RequestBody String callbackData) {
+        log.info("收到推理结果回调");
         inferenceService.handleCallback(callbackData);
         return R.ok();
     }

@@ -5,6 +5,9 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 模型视图对象
@@ -16,7 +19,7 @@ public class ModelVO {
     private String name;
     private String version;
     private String businessTag;
-    private String engineSupport;
+    private List<String> engineSupport;
     private String targetHardware;
     private String status;
     private BigDecimal confidenceThreshold;
@@ -37,7 +40,11 @@ public class ModelVO {
         vo.setName(entity.getName());
         vo.setVersion(entity.getVersion());
         vo.setBusinessTag(entity.getBusinessTag());
-        vo.setEngineSupport(entity.getEngineSupport());
+        vo.setEngineSupport(
+                entity.getEngineSupport() != null && !entity.getEngineSupport().isEmpty()
+                        ? Arrays.asList(entity.getEngineSupport().split(","))
+                        : Collections.emptyList()
+        );
         vo.setTargetHardware(entity.getTargetHardware());
         vo.setStatus(entity.getStatus());
         vo.setConfidenceThreshold(entity.getConfidenceThreshold());

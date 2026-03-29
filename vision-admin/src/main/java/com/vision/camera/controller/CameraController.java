@@ -10,6 +10,7 @@ import com.vision.common.response.R;
 import com.vision.common.util.IdUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 /**
  * 摄像头管理控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/cameras")
 @RequiredArgsConstructor
@@ -45,6 +47,7 @@ public class CameraController {
      */
     @GetMapping("/{id}")
     public R<CameraVO> getCamera(@PathVariable String id) {
+        log.info("查询摄像头详情: id={}", id);
         CameraVO vo = cameraService.getCameraById(id);
         return R.ok(vo);
     }
@@ -54,6 +57,7 @@ public class CameraController {
      */
     @PostMapping
     public R<CameraVO> createCamera(@Valid @RequestBody CameraCreateDTO dto) {
+        log.info("创建摄像头: name={}", dto.getName());
         CameraVO vo = cameraService.createCamera(dto);
         return R.ok(vo);
     }
@@ -66,6 +70,7 @@ public class CameraController {
             @PathVariable String id,
             @Valid @RequestBody CameraCreateDTO dto) {
 
+        log.info("更新摄像头: id={}", id);
         CameraVO vo = cameraService.updateCamera(id, dto);
         return R.ok(vo);
     }
@@ -75,6 +80,7 @@ public class CameraController {
      */
     @DeleteMapping("/{id}")
     public R<Void> deleteCamera(@PathVariable String id) {
+        log.info("删除摄像头: id={}", id);
         cameraService.deleteCamera(id);
         return R.ok();
     }
@@ -93,10 +99,13 @@ public class CameraController {
      */
     @PostMapping("/import")
     public R<Map<String, Object>> importCameras(@RequestParam("file") MultipartFile file) {
+        log.info("批量导入摄像头: fileName={}", file.getOriginalFilename());
         try {
             Map<String, Object> result = cameraService.importCameras(file);
+            log.info("摄像头导入完成: successCount={}, failCount={}", result.get("successCount"), result.get("failCount"));
             return R.ok(result);
         } catch (Exception e) {
+            log.error("摄像头导入失败", e);
             return R.fail(500, "导入失败: " + e.getMessage());
         }
     }

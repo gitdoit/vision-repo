@@ -11,8 +11,8 @@ export const useRuleStore = defineStore('rule', () => {
   async function fetchRules(params?: Record<string, unknown>) {
     loading.value = true
     try {
-      const res = await ruleApi.getRules(params) as unknown as Rule[]
-      rules.value = res
+      const res = await ruleApi.getRules(params) as unknown as { items: Rule[]; total: number }
+      rules.value = res.items ?? []
     } finally {
       loading.value = false
     }

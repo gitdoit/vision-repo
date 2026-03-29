@@ -7,6 +7,7 @@ import com.vision.alert.service.AlertService;
 import com.vision.common.response.PageResult;
 import com.vision.common.response.R;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.List;
 /**
  * 告警管理控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/alerts")
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class AlertController {
      */
     @GetMapping
     public R<PageResult<AlertVO>> pageAlerts(AlertQueryDTO dto) {
+        log.info("分页查询告警列表: page={}, size={}", dto.getPage(), dto.getSize());
         IPage<AlertVO> result = alertService.pageAlerts(dto);
         return R.ok(new PageResult<>(result.getRecords(), result.getTotal()));
     }
@@ -35,8 +38,10 @@ public class AlertController {
      */
     @GetMapping("/{id}")
     public R<AlertVO> getAlert(@PathVariable String id) {
+        log.info("查询告警详情: id={}", id);
         AlertVO vo = alertService.getAlertById(id);
         if (vo == null) {
+            log.warn("告警不存在: id={}", id);
             return R.fail(404, "告警不存在");
         }
         return R.ok(vo);
@@ -47,6 +52,7 @@ public class AlertController {
      */
     @PostMapping("/{id}/read")
     public R<Void> markAsRead(@PathVariable String id) {
+        log.info("标记告警已读: id={}", id);
         alertService.markAsRead(id);
         return R.ok();
     }
@@ -56,6 +62,7 @@ public class AlertController {
      */
     @PostMapping("/batch-read")
     public R<Void> markBatchAsRead(@RequestBody List<String> ids) {
+        log.info("批量标记告警已读: count={}", ids.size());
         alertService.markBatchAsRead(ids);
         return R.ok();
     }
@@ -65,6 +72,7 @@ public class AlertController {
      */
     @PostMapping("/all-read")
     public R<Void> markAllAsRead() {
+        log.info("全部标记告警已读");
         alertService.markAllAsRead();
         return R.ok();
     }

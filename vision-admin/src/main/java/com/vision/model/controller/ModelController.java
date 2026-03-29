@@ -10,6 +10,7 @@ import com.vision.common.response.PageResult;
 import com.vision.common.response.R;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.List;
 /**
  * 模型管理控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/models")
 @RequiredArgsConstructor
@@ -51,6 +53,7 @@ public class ModelController {
      */
     @PostMapping
     public R<ModelVO> createModel(@Valid @RequestBody ModelCreateDTO dto) {
+        log.info("创建模型: name={}, version={}", dto.getName(), dto.getVersion());
         ModelVO vo = modelService.createModel(dto);
         return R.ok(vo);
     }
@@ -63,6 +66,7 @@ public class ModelController {
             @PathVariable String id,
             @Valid @RequestBody ModelCreateDTO dto) {
 
+        log.info("更新模型: id={}", id);
         ModelVO vo = modelService.updateModel(id, dto);
         return R.ok(vo);
     }
@@ -72,6 +76,7 @@ public class ModelController {
      */
     @DeleteMapping("/{id}")
     public R<Void> deleteModel(@PathVariable String id) {
+        log.info("删除模型: id={}", id);
         modelService.deleteModel(id);
         return R.ok();
     }
@@ -81,6 +86,7 @@ public class ModelController {
      */
     @PostMapping("/{id}/load")
     public R<Void> loadModel(@PathVariable String id) {
+        log.info("加载模型: id={}", id);
         modelService.loadModel(id);
         return R.ok();
     }
@@ -90,6 +96,7 @@ public class ModelController {
      */
     @PostMapping("/{id}/unload")
     public R<Void> unloadModel(@PathVariable String id) {
+        log.info("卸载模型: id={}", id);
         modelService.unloadModel(id);
         return R.ok();
     }
@@ -102,6 +109,7 @@ public class ModelController {
             @PathVariable String id,
             @Valid @RequestBody ModelConfigDTO dto) {
 
+        log.info("更新模型配置: id={}", id);
         modelService.updateModelConfig(id, dto);
         return R.ok();
     }

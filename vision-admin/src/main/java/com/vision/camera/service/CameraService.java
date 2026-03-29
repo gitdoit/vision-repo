@@ -14,6 +14,7 @@ import com.vision.camera.mapper.CameraMapper;
 import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 /**
  * 摄像头服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CameraService extends ServiceImpl<CameraMapper, Camera> {
@@ -100,6 +102,7 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
         camera.setCaptureFrequency(dto.getCaptureFrequency() != null ? dto.getCaptureFrequency() : "5min");
 
         cameraMapper.insert(camera);
+        log.info("创建摄像头成功: id={}, name={}", camera.getId(), camera.getName());
         return convertToVO(camera);
     }
 
@@ -123,6 +126,7 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
 
         BeanUtils.copyProperties(dto, camera);
         cameraMapper.updateById(camera);
+        log.info("更新摄像头成功: id={}", id);
         return convertToVO(camera);
     }
 
@@ -136,6 +140,7 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
             throw new BizException("摄像头不存在");
         }
         cameraMapper.deleteById(id);
+        log.info("删除摄像头成功: id={}", id);
     }
 
     /**
@@ -174,6 +179,7 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> importCameras(MultipartFile file) throws IOException {
+        log.info("开始批量导入摄像头: fileName={}", file.getOriginalFilename());
         int successCount = 0;
         int failCount = 0;
         List<String> errors = new ArrayList<>();
@@ -217,6 +223,7 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
         result.put("successCount", successCount);
         result.put("failCount", failCount);
         result.put("errors", errors);
+        log.info("摄像头导入完成: success={}, fail={}", successCount, failCount);
         return result;
     }
 
@@ -228,6 +235,7 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
         if (camera != null) {
             camera.setStatus(status);
             cameraMapper.updateById(camera);
+            log.debug("更新摄像头状态: id={}, status={}", id, status);
         }
     }
 

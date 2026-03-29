@@ -13,6 +13,7 @@ import com.vision.dashboard.dto.WeeklyTrendVO;
 import com.vision.inference.entity.InferenceRecord;
 import com.vision.inference.mapper.InferenceMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -25,6 +26,7 @@ import java.util.List;
 /**
  * 仪表板服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DashboardService {
@@ -38,6 +40,7 @@ public class DashboardService {
      * 获取统计概览
      */
     public DashboardStatsVO getStats() {
+        log.debug("开始获取统计概览数据");
         DashboardStatsVO stats = new DashboardStatsVO();
 
         // 今日时间范围

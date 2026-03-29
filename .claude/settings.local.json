@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(cd vision-admin:*)",
+      "Bash(cd:*)",
+      "Bash(netstat:*)",
+      "Bash(docker ps:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

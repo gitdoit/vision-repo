@@ -46,20 +46,29 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
      * 分页查询推理记录
      */
     public IPage<InferenceRecordVO> pageRecords(InferenceQueryDTO dto) {
-        IPage<InferenceRecord> recordPage = inferenceMapper.selectPageByCondition(
+        int offset = (dto.getPage() - 1) * dto.getSize();
+
+        List<InferenceRecord> records = inferenceMapper.selectPageByCondition(
                 dto.getStartTime(),
                 dto.getEndTime(),
                 dto.getCameraId(),
                 dto.getAlertType(),
                 dto.getSize(),
-                (dto.getPage() - 1) * dto.getSize()
+                offset
         );
 
-        List<InferenceRecordVO> voList = recordPage.getRecords().stream()
+        Long total = inferenceMapper.countByCondition(
+                dto.getStartTime(),
+                dto.getEndTime(),
+                dto.getCameraId(),
+                dto.getAlertType()
+        );
+
+        List<InferenceRecordVO> voList = records.stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
 
-        Page<InferenceRecordVO> resultPage = new Page<>(recordPage.getCurrent(), recordPage.getSize(), recordPage.getTotal());
+        Page<InferenceRecordVO> resultPage = new Page<>(dto.getPage(), dto.getSize(), total);
         resultPage.setRecords(voList);
         return resultPage;
     }
@@ -188,7 +197,7 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
     /**
      * 统计时间范围内的推理次数
      */
-    public Integer countByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
+    public Long countByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
         return inferenceMapper.countByTimeRange(startTime, endTime);
     }
 

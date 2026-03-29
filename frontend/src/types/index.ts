@@ -149,13 +149,12 @@ export interface RelatedAlert {
 }
 
 export interface DashboardStats {
-  todayAnalyses: number
-  todayAnalysesTrend: number
-  todayAlerts: number
-  todayAlertsTrend: number
-  totalCameras: number
-  aiEnabledCameras: number
-  weeklyInferenceCount: number
+  todayInferenceCount: number
+  todayInferenceChange: number
+  todayAlertCount: number
+  todayAlertChange: number
+  totalCameraCount: number
+  aiEnabledCameraCount: number
 }
 
 export interface AlertRecord {
@@ -166,7 +165,7 @@ export interface AlertRecord {
 }
 
 export interface WeeklyTrend {
-  day: string
+  date: string
   count: number
 }
 

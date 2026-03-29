@@ -10,6 +10,7 @@ import com.vision.alert.entity.Alert;
 import com.vision.alert.mapper.AlertMapper;
 import com.vision.common.util.IdUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 /**
  * 告警服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AlertService extends ServiceImpl<AlertMapper, Alert> {
@@ -105,6 +107,7 @@ public class AlertService extends ServiceImpl<AlertMapper, Alert> {
         // 实时推送
         alertPushService.pushAlert(convertToVO(alert));
 
+        log.info("创建告警成功: id={}, level={}, type={}", alert.getId(), alert.getAlertLevel(), alert.getAlertType());
         return convertToVO(alert);
     }
 
@@ -117,6 +120,7 @@ public class AlertService extends ServiceImpl<AlertMapper, Alert> {
         if (alert != null) {
             alert.setReadStatus(true);
             alertMapper.updateById(alert);
+            log.debug("告警标记已读: id={}", id);
         }
     }
 
@@ -143,6 +147,7 @@ public class AlertService extends ServiceImpl<AlertMapper, Alert> {
             alert.setReadStatus(true);
             alertMapper.updateById(alert);
         }
+        log.info("全部标记已读: count={}", alerts.size());
     }
 
     /**

@@ -7,6 +7,7 @@ import com.vision.dashboard.dto.WeeklyTrendVO;
 import com.vision.dashboard.service.DashboardService;
 import com.vision.common.response.R;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.List;
 /**
  * 仪表板控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/dashboard")
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class DashboardController {
      */
     @GetMapping("/stats")
     public R<DashboardStatsVO> getStats() {
+        log.info("获取统计概览");
         DashboardStatsVO stats = dashboardService.getStats();
         return R.ok(stats);
     }

@@ -14,6 +14,7 @@ import com.vision.rule.mapper.RuleMapper;
 import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 /**
  * 规则服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RuleService extends ServiceImpl<RuleMapper, Rule> {
@@ -89,6 +91,7 @@ public class RuleService extends ServiceImpl<RuleMapper, Rule> {
         // 保存规则条件
         saveRuleConditions(rule.getId(), dto.getConditions());
 
+        log.info("创建规则成功: id={}, name={}", rule.getId(), rule.getName());
         return convertToVO(rule);
     }
 
@@ -113,6 +116,7 @@ public class RuleService extends ServiceImpl<RuleMapper, Rule> {
 
         saveRuleConditions(id, dto.getConditions());
 
+        log.info("更新规则成功: id={}", id);
         return convertToVO(rule);
     }
 
@@ -132,6 +136,7 @@ public class RuleService extends ServiceImpl<RuleMapper, Rule> {
         ruleConditionMapper.delete(wrapper);
 
         ruleMapper.deleteById(id);
+        log.info("删除规则成功: id={}", id);
     }
 
     /**
@@ -146,6 +151,7 @@ public class RuleService extends ServiceImpl<RuleMapper, Rule> {
 
         rule.setDeployed(true);
         ruleMapper.updateById(rule);
+        log.info("部署规则成功: id={}", id);
     }
 
     /**

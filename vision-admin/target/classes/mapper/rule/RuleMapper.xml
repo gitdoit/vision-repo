@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vision.rule.mapper.RuleMapper">
+
+    <resultMap id="BaseResultMap" type="com.vision.rule.entity.Rule">
+        <id column="id" property="id" jdbcType="VARCHAR"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="business_line" property="businessLine" jdbcType="VARCHAR"/>
+        <result column="enabled" property="enabled" jdbcType="BOOLEAN"/>
+        <result column="priority" property="priority" jdbcType="VARCHAR"/>
+        <result column="schedule" property="schedule" jdbcType="VARCHAR"/>
+        <result column="weekdays" property="weekdays" jdbcType="VARCHAR"/>
+        <result column="effective_start" property="effectiveStart" jdbcType="DATE"/>
+        <result column="effective_end" property="effectiveEnd" jdbcType="DATE"/>
+        <result column="actions" property="actions" jdbcType="VARCHAR"/>
+        <result column="deployed" property="deployed" jdbcType="BOOLEAN"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 查询生效的规则 -->
+    <select id="selectActiveRules" resultMap="BaseResultMap">
+        SELECT * FROM rule
+        WHERE enabled = true
+          AND deployed = true
+          AND (effective_start IS NULL OR effective_start &lt;= CURRENT_DATE)
+          AND (effective_end IS NULL OR effective_end &gt;= CURRENT_DATE)
+    </select>
+
+</mapper>

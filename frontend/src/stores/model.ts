@@ -11,8 +11,8 @@ export const useModelStore = defineStore('model', () => {
   async function fetchModels(params?: Record<string, unknown>) {
     loading.value = true
     try {
-      const res = await modelApi.getModels(params) as unknown as Model[]
-      models.value = res
+      const res = await modelApi.getModels(params) as unknown as { items: Model[]; total: number }
+      models.value = res.items ?? []
     } finally {
       loading.value = false
     }
