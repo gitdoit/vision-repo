@@ -2,9 +2,9 @@
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:49153/vision
+    url: jdbc:postgresql://10.5.5.104:25432/gscsfy_l3_gasdb_v1?currentSchema=vision
     username: postgres
-    password: postgrespw
+    password: 3a07eb49
 
 # Vision 开发环境配置
 vision:

@@ -8,7 +8,7 @@ services:
     image: postgres:16-alpine
     container_name: vision-postgres
     environment:
-      POSTGRES_DB: vision
+      POSTGRES_DB: gscsfy_l3_gasdb_v1
       POSTGRES_USER: ${DB_USER:-vision}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-vision123}
       TZ: Asia/Shanghai
@@ -33,7 +33,7 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: vision
+      DB_NAME: gscsfy_l3_gasdb_v1
       DB_USER: ${DB_USER:-vision}
       DB_PASSWORD: ${DB_PASSWORD:-vision123}
       INFERENCE_SERVICE_URL: http://vision-inference:5000

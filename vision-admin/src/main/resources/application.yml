@@ -8,7 +8,7 @@ spring:
     name: vision-admin
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:49153}/${DB_NAME:vision}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:49153}/${DB_NAME:gscsfy_l3_gasdb_v1}?currentSchema=vision
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgrespw}
     driver-class-name: org.postgresql.Driver
@@ -21,6 +21,8 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    schemas: vision
+    default-schema: vision
 
 # MyBatis-Plus 配置
 mybatis-plus:

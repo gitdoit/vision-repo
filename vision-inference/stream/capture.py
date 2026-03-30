@@ -7,7 +7,7 @@ import queue
 import cv2
 import requests
 
-from ..inference.engine import InferenceEngine
+from inference.engine import InferenceEngine
 
 
 class StreamCapture:

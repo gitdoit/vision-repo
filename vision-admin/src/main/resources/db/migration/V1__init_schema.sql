@@ -2,8 +2,11 @@
 -- Version 1.0
 -- Author: Vision Team
 
+-- 创建 vision schema
+CREATE SCHEMA IF NOT EXISTS vision;
+
 -- 摄像头分组表
-CREATE TABLE camera_group (
+CREATE TABLE vision.camera_group (
     id            VARCHAR(36) PRIMARY KEY,
     name          VARCHAR(100) NOT NULL,
     parent_id     VARCHAR(36),
@@ -14,7 +17,7 @@ CREATE TABLE camera_group (
 );
 
 -- 摄像头表
-CREATE TABLE camera (
+CREATE TABLE vision.camera (
     id                VARCHAR(36) PRIMARY KEY,
     name              VARCHAR(200) NOT NULL,
     business_line     VARCHAR(50) NOT NULL,
@@ -24,7 +27,7 @@ CREATE TABLE camera (
     ai_enabled        BOOLEAN DEFAULT FALSE,
     status            VARCHAR(20) DEFAULT 'offline',
     last_capture_time TIMESTAMP,
-    group_id          VARCHAR(36) REFERENCES camera_group(id),
+    group_id          VARCHAR(36) REFERENCES vision.camera_group(id),
     source            VARCHAR(20) DEFAULT 'manual',
     platform_id       VARCHAR(36),
     channel_no        VARCHAR(100),
@@ -33,7 +36,7 @@ CREATE TABLE camera (
 );
 
 -- 视频平台表
-CREATE TABLE video_platform (
+CREATE TABLE vision.video_platform (
     id                VARCHAR(36) PRIMARY KEY,
     name              VARCHAR(200) NOT NULL,
     api_base          VARCHAR(500) NOT NULL,
@@ -50,7 +53,7 @@ CREATE TABLE video_platform (
 );
 
 -- 模型表
-CREATE TABLE model (
+CREATE TABLE vision.model (
     id                   VARCHAR(36) PRIMARY KEY,
     name                 VARCHAR(200) NOT NULL,
     version              VARCHAR(50) NOT NULL,
@@ -69,16 +72,16 @@ CREATE TABLE model (
 );
 
 -- 模型版本历史表
-CREATE TABLE model_version (
+CREATE TABLE vision.model_version (
     id          VARCHAR(36) PRIMARY KEY,
-    model_id    VARCHAR(36) REFERENCES model(id) ON DELETE CASCADE,
+    model_id    VARCHAR(36) REFERENCES vision.model(id) ON DELETE CASCADE,
     version     VARCHAR(50) NOT NULL,
     description TEXT,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 规则表
-CREATE TABLE rule (
+CREATE TABLE vision.rule (
     id              VARCHAR(36) PRIMARY KEY,
     name            VARCHAR(200) NOT NULL,
     business_line   VARCHAR(50),
@@ -94,19 +97,19 @@ CREATE TABLE rule (
 );
 
 -- 规则条件表
-CREATE TABLE rule_condition (
+CREATE TABLE vision.rule_condition (
     id        VARCHAR(36) PRIMARY KEY,
-    rule_id   VARCHAR(36) REFERENCES rule(id) ON DELETE CASCADE,
+    rule_id   VARCHAR(36) REFERENCES vision.rule(id) ON DELETE CASCADE,
     type      VARCHAR(20) NOT NULL,
     operator  VARCHAR(10) NOT NULL,
     value     VARCHAR(200) NOT NULL
 );
 
 -- 推理记录表
-CREATE TABLE inference_record (
+CREATE TABLE vision.inference_record (
     id                 VARCHAR(36) PRIMARY KEY,
     event_id           VARCHAR(36),
-    camera_id          VARCHAR(36) REFERENCES camera(id),
+    camera_id          VARCHAR(36) REFERENCES vision.camera(id),
     business_type      VARCHAR(100),
     avg_confidence     DECIMAL(3,2),
     alert_status       VARCHAR(20) DEFAULT 'normal',
@@ -120,9 +123,9 @@ CREATE TABLE inference_record (
 );
 
 -- 检测目标表
-CREATE TABLE detection (
+CREATE TABLE vision.detection (
     id            VARCHAR(36) PRIMARY KEY,
-    record_id     VARCHAR(36) REFERENCES inference_record(id) ON DELETE CASCADE,
+    record_id     VARCHAR(36) REFERENCES vision.inference_record(id) ON DELETE CASCADE,
     label         VARCHAR(100) NOT NULL,
     confidence    DECIMAL(4,3),
     bbox          VARCHAR(100),
@@ -131,12 +134,12 @@ CREATE TABLE detection (
 );
 
 -- 告警表
-CREATE TABLE alert (
+CREATE TABLE vision.alert (
     id                VARCHAR(36) PRIMARY KEY,
     alert_level       VARCHAR(20) NOT NULL,
     alert_type        VARCHAR(100),
     scene             VARCHAR(50),
-    camera_id         VARCHAR(36) REFERENCES camera(id),
+    camera_id         VARCHAR(36) REFERENCES vision.camera(id),
     stream_id         VARCHAR(100),
     capture_time      TIMESTAMP,
     alert_time        TIMESTAMP,
@@ -150,7 +153,7 @@ CREATE TABLE alert (
 );
 
 -- 系统配置表
-CREATE TABLE system_config (
+CREATE TABLE vision.system_config (
     config_key   VARCHAR(100) PRIMARY KEY,
     config_value TEXT,
     description  VARCHAR(500),
@@ -158,18 +161,18 @@ CREATE TABLE system_config (
 );
 
 -- 索引
-CREATE INDEX idx_camera_group ON camera(group_id);
-CREATE INDEX idx_camera_status ON camera(status);
-CREATE INDEX idx_camera_business_line ON camera(business_line);
-CREATE INDEX idx_inference_camera ON inference_record(camera_id);
-CREATE INDEX idx_inference_created ON inference_record(created_at);
-CREATE INDEX idx_inference_alert_status ON inference_record(alert_status);
-CREATE INDEX idx_alert_created ON alert(created_at);
-CREATE INDEX idx_alert_level ON alert(alert_level);
-CREATE INDEX idx_alert_camera ON alert(camera_id);
-CREATE INDEX idx_alert_read_status ON alert(read_status);
-CREATE INDEX idx_detection_record ON detection(record_id);
-CREATE INDEX idx_rule_enabled ON rule(enabled);
-CREATE INDEX idx_rule_condition_rule ON rule_condition(rule_id);
-CREATE INDEX idx_model_status ON model(status);
-CREATE INDEX idx_camera_group_parent ON camera_group(parent_id);
+CREATE INDEX idx_camera_group ON vision.camera(group_id);
+CREATE INDEX idx_camera_status ON vision.camera(status);
+CREATE INDEX idx_camera_business_line ON vision.camera(business_line);
+CREATE INDEX idx_inference_camera ON vision.inference_record(camera_id);
+CREATE INDEX idx_inference_created ON vision.inference_record(created_at);
+CREATE INDEX idx_inference_alert_status ON vision.inference_record(alert_status);
+CREATE INDEX idx_alert_created ON vision.alert(created_at);
+CREATE INDEX idx_alert_level ON vision.alert(alert_level);
+CREATE INDEX idx_alert_camera ON vision.alert(camera_id);
+CREATE INDEX idx_alert_read_status ON vision.alert(read_status);
+CREATE INDEX idx_detection_record ON vision.detection(record_id);
+CREATE INDEX idx_rule_enabled ON vision.rule(enabled);
+CREATE INDEX idx_rule_condition_rule ON vision.rule_condition(rule_id);
+CREATE INDEX idx_model_status ON vision.model(status);
+CREATE INDEX idx_camera_group_parent ON vision.camera_group(parent_id);
