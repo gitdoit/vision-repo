@@ -9,16 +9,16 @@ export function getModel(id: string) {
   return client.get<Model>(`/models/${encodeURIComponent(id)}`)
 }
 
-export function loadModel(id: string, device: string = 'cpu', deviceName?: string) {
-  return client.post(`/models/${encodeURIComponent(id)}/load`, null, { params: { device, deviceName } })
+export function loadModel(id: string, device: string = 'cpu', deviceName?: string, nodeId?: string) {
+  return client.post(`/models/${encodeURIComponent(id)}/load`, null, { params: { device, deviceName, nodeId } })
 }
 
 export function unloadModel(id: string) {
   return client.post(`/models/${encodeURIComponent(id)}/unload`)
 }
 
-export function getDeviceInfo() {
-  return client.get<{ devices: string[]; cuda_available: boolean; gpu_name: string | null }>('/models/device/info')
+export function getDeviceInfo(nodeId?: string) {
+  return client.get<{ devices: string[]; cuda_available: boolean; gpu_name: string | null }>('/models/device/info', { params: { nodeId } })
 }
 
 export function updateModelConfig(id: string, data: Partial<Model>) {

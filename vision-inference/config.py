@@ -29,6 +29,18 @@ class Config:
     DEFAULT_STREAM_FPS = int(os.getenv('DEFAULT_STREAM_FPS', '5'))
     MAX_STREAM_TASKS = int(os.getenv('MAX_STREAM_TASKS', '10'))
 
+    # ---- 多节点注册相关 ----
+    # 管理服务地址
+    ADMIN_URL = os.getenv('ADMIN_URL', 'http://localhost:8080')
+    # 自定义节点名称（空则自动生成）
+    NODE_NAME = os.getenv('NODE_NAME', '')
+    # 心跳间隔（秒）
+    HEARTBEAT_INTERVAL = int(os.getenv('HEARTBEAT_INTERVAL', '15'))
+    # 本地状态文件路径
+    STATE_FILE_PATH = os.getenv('STATE_FILE_PATH', '/data/vision/node_state.json')
+    # 对外可达地址（Docker/K8s 场景需要配置，空则自动检测）
+    ADVERTISE_HOST = os.getenv('ADVERTISE_HOST', '')
+
     @classmethod
     def validate(cls):
         """Validate configuration and raise errors if invalid."""

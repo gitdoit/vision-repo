@@ -3,10 +3,12 @@ import os
 import logging
 from flask import Flask, request, jsonify
 from werkzeug.exceptions import BadRequest
+from werkzeug.utils import secure_filename
 
 from config import Config
 from inference.engine import InferenceEngine
 from inference.model_manager import ModelManager
+from state_store import StateStore
 from stream.stream_task import StreamTaskManager
 
 # Configure logging
@@ -23,9 +25,34 @@ app = Flask(__name__)
 Config.validate()
 
 # Initialize singletons
+state_store = StateStore(Config.STATE_FILE_PATH)
 inference_engine = InferenceEngine()
 model_manager = ModelManager()
+model_manager.set_state_store(state_store)
 stream_manager = StreamTaskManager()
+
+# Restore models from previous session
+model_manager.restore_models()
+
+# Node registration (runs in background thread)
+_node_registration = None
+if Config.ADMIN_URL:
+    try:
+        from registration import NodeRegistration
+        _node_registration = NodeRegistration(
+            admin_url=Config.ADMIN_URL,
+            node_name=Config.NODE_NAME,
+            port=Config.PORT,
+            state_store=state_store,
+            model_manager=model_manager,
+            stream_manager=stream_manager,
+            heartbeat_interval=Config.HEARTBEAT_INTERVAL,
+            advertise_host=Config.ADVERTISE_HOST,
+        )
+        _node_registration.register(max_retries=0, retry_delay=5)
+        _node_registration.start_heartbeat()
+    except Exception as e:
+        logger.error('Node registration failed: %s', e)
 
 
 @app.route('/health', methods=['GET'])
@@ -222,6 +249,80 @@ def model_status():
             for k, v in models.items()
         }
     })
+
+
+@app.route('/models/upload', methods=['POST'])
+def upload_model():
+    """
+    Receive a model file pushed from the admin service.
+
+    Request: multipart/form-data
+        - file: model file (.pt, .onnx, etc.)
+        - filename: optional target filename
+    Response:
+        {"success": true, "local_path": "/models/xxx.pt"}
+    """
+    try:
+        if 'file' not in request.files:
+            raise BadRequest('file is required')
+
+        file = request.files['file']
+        if not file.filename:
+            raise BadRequest('Empty filename')
+
+        filename = request.form.get('filename') or secure_filename(file.filename)
+        os.makedirs(Config.MODEL_BASE_PATH, exist_ok=True)
+        save_path = os.path.join(Config.MODEL_BASE_PATH, filename)
+        file.save(save_path)
+
+        logger.info('Model file uploaded: %s', save_path)
+        return jsonify({'success': True, 'local_path': save_path})
+
+    except BadRequest as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error('Model upload error: %s', e)
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+@app.route('/system/info', methods=['GET'])
+def system_info():
+    """
+    Return system hardware and runtime information.
+    """
+    import platform
+    info = {
+        'hostname': platform.node(),
+        'os': platform.system(),
+        'cpu': platform.processor() or platform.machine(),
+        'device': Config.DEVICE,
+    }
+
+    try:
+        import psutil
+        mem = psutil.virtual_memory()
+        info['memory_total'] = mem.total
+        info['memory_used'] = mem.used
+        info['cpu_percent'] = psutil.cpu_percent(interval=0.1)
+    except ImportError:
+        pass
+
+    try:
+        import torch
+        info['cuda_available'] = torch.cuda.is_available()
+        if torch.cuda.is_available():
+            info['gpu_name'] = torch.cuda.get_device_name(0)
+            info['gpu_count'] = torch.cuda.device_count()
+    except ImportError:
+        info['cuda_available'] = False
+
+    info['loaded_models'] = len(model_manager.list_models())
+    info['active_tasks'] = len(stream_manager.list_tasks())
+
+    if _node_registration:
+        info['node_id'] = _node_registration.node_id
+
+    return jsonify(info)
 
 
 @app.route('/device/info', methods=['GET'])

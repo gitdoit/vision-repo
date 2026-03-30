@@ -78,9 +78,13 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
         // 3. 将 URL 解析为本地文件路径（Python 服务通过本地路径访问）
         String filePath = storageService.resolveToFilePath(imageUrl);
 
-        // 4. 调用 Python 推理服务
+        // 4. 调用 Python 推理服务（路由到模型所在节点）
+        String nodeId = model.getNodeId();
+        if (nodeId == null || nodeId.isBlank()) {
+            throw new BizException("模型未绑定推理节点");
+        }
         String taskType = model.getTaskType() != null ? model.getTaskType() : "detect";
-        Map<String, Object> pythonResult = inferenceClient.predict(filePath, modelId, confidenceThreshold, taskType);
+        Map<String, Object> pythonResult = inferenceClient.predict(nodeId, filePath, modelId, confidenceThreshold, taskType);
 
         // 5. 转换 snake_case → camelCase，匹配前端类型定义
         Map<String, Object> result = new java.util.LinkedHashMap<>();

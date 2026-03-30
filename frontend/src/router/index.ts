@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '模型配置管理', icon: 'mdi:brain' },
       },
       {
+        path: 'nodes',
+        name: 'Nodes',
+        component: () => import('@/pages/node/NodePage.vue'),
+        meta: { title: '推理节点管理', icon: 'mdi:server-network' },
+      },
+      {
         path: 'rules',
         name: 'Rules',
         component: () => import('@/pages/rule/RulePage.vue'),

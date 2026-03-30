@@ -86,6 +86,11 @@ public class Model {
     private String modelPath;
 
     /**
+     * 模型加载所在节点ID
+     */
+    private String nodeId;
+
+    /**
      * 作者
      */
     private String author;

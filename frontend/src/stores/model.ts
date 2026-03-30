@@ -41,8 +41,8 @@ export const useModelStore = defineStore('model', () => {
     await fetchModels()
   }
 
-  async function loadModel(id: string, device: string = 'cpu', deviceName?: string) {
-    await modelApi.loadModel(id, device, deviceName)
+  async function loadModel(id: string, device: string = 'cpu', deviceName?: string, nodeId?: string) {
+    await modelApi.loadModel(id, device, deviceName, nodeId)
     await fetchModels()
   }
 
@@ -51,8 +51,8 @@ export const useModelStore = defineStore('model', () => {
     await fetchModels()
   }
 
-  async function fetchDeviceInfo() {
-    const res = await modelApi.getDeviceInfo() as unknown as { devices: string[]; cuda_available: boolean; gpu_name: string | null }
+  async function fetchDeviceInfo(nodeId?: string) {
+    const res = await modelApi.getDeviceInfo(nodeId) as unknown as { devices: string[]; cuda_available: boolean; gpu_name: string | null }
     return res
   }
 

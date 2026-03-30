@@ -29,6 +29,8 @@ public class ModelVO {
     private String inputResolution;
     private Integer maxConcurrency;
     private String modelPath;
+    private String nodeId;
+    private String nodeName;
     private String author;
     private Integer avgLatency;
     private LocalDateTime createdAt;
@@ -57,6 +59,7 @@ public class ModelVO {
         vo.setInputResolution(entity.getInputResolution());
         vo.setMaxConcurrency(entity.getMaxConcurrency());
         vo.setModelPath(entity.getModelPath());
+        vo.setNodeId(entity.getNodeId());
         vo.setAuthor(entity.getAuthor());
         vo.setAvgLatency(entity.getAvgLatency());
         vo.setCreatedAt(entity.getCreatedAt());

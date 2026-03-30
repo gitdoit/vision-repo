@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import {
   dashboardStats, weeklyTrend, alertRanking, realtimeAlerts,
   cameras, cameraGroups, models, rules, inferenceRecords,
-  videoPlatforms,
+  videoPlatforms, inferenceNodes,
 } from './data'
 
 const BASE = '/api/v1'
@@ -91,6 +91,15 @@ export const handlers = [
     cuda_available: true,
     gpu_name: 'NVIDIA GeForce RTX 3090',
   })),
+
+  // Nodes
+  http.get(`${BASE}/nodes`, () => HttpResponse.json(inferenceNodes)),
+  http.get(`${BASE}/nodes/:id`, ({ params }) => {
+    const node = inferenceNodes.find(n => n.id === params.id)
+    return node ? HttpResponse.json(node) : new HttpResponse(null, { status: 404 })
+  }),
+  http.put(`${BASE}/nodes/:id/name`, () => HttpResponse.json({ success: true })),
+  http.delete(`${BASE}/nodes/:id`, () => new HttpResponse(null, { status: 204 })),
 
   // Rules
   http.get(`${BASE}/rules`, () => HttpResponse.json(rules)),

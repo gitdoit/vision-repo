@@ -13,6 +13,7 @@ import com.vision.model.mapper.ModelMapper;
 import com.vision.model.mapper.ModelVersionMapper;
 import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
+import com.vision.node.service.NodeRouter;
 import com.vision.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
     private final ModelVersionMapper modelVersionMapper;
     private final InferenceClient inferenceClient;
     private final StorageService storageService;
+    private final NodeRouter nodeRouter;
 
     /**
      * 分页查询模型列表
@@ -147,7 +149,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
      * 加载模型
      */
     @Transactional(rollbackFor = Exception.class)
-    public void loadModel(String id, String device, String deviceName) {
+    public void loadModel(String id, String device, String deviceName, String nodeId) {
         Model model = modelMapper.selectById(id);
         if (model == null) {
             throw new BizException("模型不存在");
@@ -157,22 +159,42 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
             throw new BizException("模型已加载");
         }
 
+        // 选择目标节点
+        String targetNodeId = nodeRouter.selectNodeForLoad(nodeId);
+
         // 更新状态为加载中
         model.setStatus("loading");
         modelMapper.updateById(model);
-        log.info("开始加载模型: id={}, path={}, device={}", id, model.getModelPath(), device);
+        log.info("开始加载模型: id={}, path={}, device={}, nodeId={}", id, model.getModelPath(), device, targetNodeId);
 
         try {
-            // 将存储 URL 转换为本地文件系统路径后发送给推理服务
-            String localPath = storageService.resolveToFilePath(model.getModelPath());
-            inferenceClient.loadModel(id, localPath, device);
+            // 读取模型文件并推送到推理节点
+            String modelPath = model.getModelPath();
+            String localPath = storageService.resolveToFilePath(modelPath);
+            java.io.File modelFile = new java.io.File(localPath);
+            if (!modelFile.exists()) {
+                throw new BizException("模型文件不存在: " + localPath);
+            }
+            byte[] fileBytes = java.nio.file.Files.readAllBytes(modelFile.toPath());
+            String filename = modelFile.getName();
+
+            // 上传模型文件到推理节点
+            String remoteModelPath = inferenceClient.uploadModelFile(targetNodeId, fileBytes, filename);
+
+            // 调用推理节点加载模型
+            inferenceClient.loadModel(targetNodeId, id, remoteModelPath, device);
 
             // 更新状态为已加载
             model.setStatus("loaded");
             model.setDevice(device);
             model.setDeviceName(deviceName);
+            model.setNodeId(targetNodeId);
             modelMapper.updateById(model);
-            log.info("模型加载成功: id={}", id);
+            log.info("模型加载成功: id={}, nodeId={}", id, targetNodeId);
+        } catch (BizException e) {
+            model.setStatus("unloaded");
+            modelMapper.updateById(model);
+            throw e;
         } catch (Exception e) {
             model.setStatus("unloaded");
             modelMapper.updateById(model);
@@ -196,13 +218,17 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         }
 
         try {
-            // 调用Python推理服务卸载模型
-            inferenceClient.unloadModel(id);
+            // 从 model.nodeId 获取目标节点
+            String nodeId = model.getNodeId();
+            if (nodeId != null && !nodeId.isBlank()) {
+                inferenceClient.unloadModel(nodeId, id);
+            }
 
             // 更新状态
             model.setStatus("unloaded");
             model.setDevice(null);
             model.setDeviceName(null);
+            model.setNodeId(null);
             modelMapper.updateById(model);
             log.info("模型卸载成功: id={}", id);
         } catch (Exception e) {

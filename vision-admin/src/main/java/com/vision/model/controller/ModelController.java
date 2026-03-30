@@ -92,9 +92,10 @@ public class ModelController {
     public R<Void> loadModel(
             @PathVariable String id,
             @RequestParam(defaultValue = "cpu") String device,
-            @RequestParam(required = false) String deviceName) {
-        log.info("加载模型: id={}, device={}, deviceName={}", id, device, deviceName);
-        modelService.loadModel(id, device, deviceName);
+            @RequestParam(required = false) String deviceName,
+            @RequestParam(required = false) String nodeId) {
+        log.info("加载模型: id={}, device={}, deviceName={}, nodeId={}", id, device, deviceName, nodeId);
+        modelService.loadModel(id, device, deviceName, nodeId);
         return R.ok();
     }
 
@@ -162,7 +163,7 @@ public class ModelController {
      * 获取推理服务设备信息（CPU/GPU）
      */
     @GetMapping("/device/info")
-    public R<Map<String, Object>> getDeviceInfo() {
-        return R.ok(inferenceClient.getDeviceInfo());
+    public R<Map<String, Object>> getDeviceInfo(@RequestParam String nodeId) {
+        return R.ok(inferenceClient.getDeviceInfo(nodeId));
     }
 }

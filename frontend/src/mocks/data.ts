@@ -1,6 +1,6 @@
 import type {
   DashboardStats, WeeklyTrend, BusinessLineAlert, AlertRecord,
-  Camera, CameraGroup, Model, Rule, InferenceRecord, VideoPlatform
+  Camera, CameraGroup, Model, Rule, InferenceRecord, VideoPlatform, InferenceNode
 } from '@/types'
 
 export const dashboardStats: DashboardStats = {
@@ -263,5 +263,64 @@ export const videoPlatforms: VideoPlatform[] = [
     },
     camerasCount: 45,
     status: 'connected',
+  },
+]
+
+export const inferenceNodes: InferenceNode[] = [
+  {
+    id: 'node-1',
+    nodeName: 'GPU-Server-01',
+    host: '192.168.1.10',
+    port: 5000,
+    status: 'online',
+    deviceType: 'cuda',
+    gpuName: 'NVIDIA GeForce RTX 3090',
+    gpuCount: 1,
+    cpuInfo: 'Intel Core i9-12900K',
+    memoryTotal: 68719476736,
+    lastHeartbeat: '2026-10-24T10:30:15',
+    registeredAt: '2026-10-20T08:00:00',
+    runtimeInfo: {
+      loadedModels: [
+        { modelId: 'm1', modelPath: '/models/yolov8_s_2.1.engine', device: 'cuda', loadedAt: 1698100000 },
+        { modelId: 'm3', modelPath: '/models/facenet_pro_x.engine', device: 'cuda', loadedAt: 1698100500 },
+      ],
+      activeTasks: [
+        { taskId: 'task-001', streamUrl: 'rtsp://192.168.1.101:554/stream1', modelId: 'm1', fps: 5, running: true },
+      ],
+      systemLoad: { cpuPercent: 35, memoryPercent: 62, gpuPercent: 45 },
+    },
+  },
+  {
+    id: 'node-2',
+    nodeName: 'GPU-Server-02',
+    host: '192.168.1.11',
+    port: 5000,
+    status: 'online',
+    deviceType: 'cuda',
+    gpuName: 'NVIDIA Tesla T4',
+    gpuCount: 2,
+    cpuInfo: 'AMD EPYC 7543',
+    memoryTotal: 137438953472,
+    lastHeartbeat: '2026-10-24T10:30:12',
+    registeredAt: '2026-10-21T14:00:00',
+    runtimeInfo: {
+      loadedModels: [],
+      activeTasks: [],
+      systemLoad: { cpuPercent: 8, memoryPercent: 22, gpuPercent: 0 },
+    },
+  },
+  {
+    id: 'node-3',
+    nodeName: 'CPU-Worker-01',
+    host: '192.168.1.12',
+    port: 5000,
+    status: 'offline',
+    deviceType: 'cpu',
+    gpuCount: 0,
+    cpuInfo: 'Intel Xeon E-2288G',
+    memoryTotal: 34359738368,
+    lastHeartbeat: '2026-10-24T09:15:00',
+    registeredAt: '2026-10-22T10:00:00',
   },
 ]

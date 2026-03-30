@@ -101,6 +101,8 @@ export interface Model {
   status: 'loaded' | 'unloaded'
   device?: string
   deviceName?: string
+  nodeId?: string
+  nodeName?: string
   confidenceThreshold: number
   inputResolution: string
   maxConcurrency: number
@@ -227,4 +229,48 @@ export interface WeeklyTrend {
 export interface BusinessLineAlert {
   name: string
   percentage: number
+}
+
+/** 推理节点 */
+export interface InferenceNode {
+  id: string
+  nodeName: string
+  host: string
+  port: number
+  status: 'online' | 'offline' | 'unknown'
+  deviceType: 'cpu' | 'cuda'
+  gpuName?: string
+  gpuCount: number
+  cpuInfo?: string
+  memoryTotal: number
+  lastHeartbeat?: string
+  registeredAt: string
+  runtimeInfo?: NodeRuntimeInfo
+}
+
+export interface NodeRuntimeInfo {
+  loadedModels?: NodeModelInfo[]
+  activeTasks?: NodeTaskInfo[]
+  systemLoad?: SystemLoad
+}
+
+export interface NodeModelInfo {
+  modelId: string
+  modelPath: string
+  device: string
+  loadedAt: number
+}
+
+export interface NodeTaskInfo {
+  taskId: string
+  streamUrl: string
+  modelId: string
+  fps: number
+  running: boolean
+}
+
+export interface SystemLoad {
+  cpuPercent: number
+  memoryPercent: number
+  gpuPercent?: number
 }

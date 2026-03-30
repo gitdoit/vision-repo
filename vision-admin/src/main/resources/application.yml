@@ -46,9 +46,12 @@ mybatis-plus:
 vision:
   # 推理服务配置
   inference:
-    service-url: ${INFERENCE_SERVICE_URL:http://localhost:5000}
+    service-url: ${INFERENCE_SERVICE_URL:http://localhost:5000}  # deprecated: 多节点模式下不再使用
     connect-timeout: 5000
     read-timeout: 30000
+    image-transfer-mode: url  # url | base64
+    heartbeat-timeout: 60     # 心跳超时秒数
+    health-check-interval: 30 # 健康检查间隔秒数
 
   # 存储配置
   storage:

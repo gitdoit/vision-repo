@@ -36,7 +36,6 @@ services:
       DB_NAME: gscsfy_l3_gasdb_v1
       DB_USER: ${DB_USER:-vision}
       DB_PASSWORD: ${DB_PASSWORD:-vision123}
-      INFERENCE_SERVICE_URL: http://vision-inference:5000
       VISION_STORAGE_TYPE: local
       LOCAL_STORAGE_URL: http://localhost:8080/files
       TZ: Asia/Shanghai
@@ -67,10 +66,15 @@ services:
     environment:
       MODEL_BASE_PATH: /data/vision/models
       DEVICE: ${INFERENCE_DEVICE:-cpu}
+      ADMIN_URL: http://vision-admin:8080
+      NODE_NAME: ${NODE_NAME:-}
+      ADVERTISE_HOST: ${ADVERTISE_HOST:-}
+      STATE_FILE_PATH: /data/vision/node_state.json
       TZ: Asia/Shanghai
     volumes:
       - model_data:/data/vision/models
       - file_data:/data/vision/files
+      - node_state:/data/vision
     ports:
       - "5000:5000"
     healthcheck:
@@ -87,6 +91,8 @@ volumes:
   file_data:
     driver: local
   model_data:
+    driver: local
+  node_state:
     driver: local
 
 networks:

@@ -1,10 +1,13 @@
 """Model lifecycle management with thread-safe model loading/unloading."""
 import os
+import logging
 import threading
 from typing import Dict, Optional
 from dataclasses import dataclass
 
 from ultralytics import YOLO
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -37,7 +40,12 @@ class ModelManager:
             self._models: Dict[str, YOLO] = {}
             self._model_info: Dict[str, ModelInfo] = {}
             self._model_lock = threading.RLock()
+            self._state_store = None
             self._initialized = True
+
+    def set_state_store(self, state_store):
+        """Inject StateStore for persistence. Call before loading models."""
+        self._state_store = state_store
 
     def load_model(self, model_id: str, model_path: str, device: str = 'cpu') -> bool:
         """
@@ -76,6 +84,10 @@ class ModelManager:
                     device=device,
                     loaded_at=time.time()
                 )
+
+                if self._state_store:
+                    self._state_store.add_model(model_id, model_path, device)
+
                 return True
             except Exception as e:
                 raise RuntimeError(f"Failed to load model {model_id}: {e}")
@@ -96,6 +108,10 @@ class ModelManager:
 
             del self._models[model_id]
             del self._model_info[model_id]
+
+            if self._state_store:
+                self._state_store.remove_model(model_id)
+
             return True
 
     def get_model(self, model_id: str) -> Optional[YOLO]:
@@ -125,3 +141,32 @@ class ModelManager:
         """Check if a model is currently loaded."""
         with self._model_lock:
             return model_id in self._models
+
+    def restore_models(self):
+        """
+        Restore previously loaded models from state store.
+        Called on startup to recover from restart.
+        """
+        if not self._state_store:
+            return
+
+        models = self._state_store.get_loaded_models()
+        if not models:
+            logger.info('No models to restore')
+            return
+
+        logger.info('Restoring %d model(s) from state', len(models))
+        for entry in models:
+            model_id = entry.get('model_id')
+            model_path = entry.get('model_path')
+            device = entry.get('device', 'cpu')
+            try:
+                if os.path.exists(model_path):
+                    self.load_model(model_id, model_path, device)
+                    logger.info('Restored model: %s', model_id)
+                else:
+                    logger.warning('Model file missing, skip restore: %s -> %s', model_id, model_path)
+                    self._state_store.remove_model(model_id)
+            except Exception as e:
+                logger.error('Failed to restore model %s: %s', model_id, e)
+                self._state_store.remove_model(model_id)

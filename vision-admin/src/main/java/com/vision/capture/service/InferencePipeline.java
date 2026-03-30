@@ -10,7 +10,10 @@ import com.vision.inference.entity.Detection;
 import com.vision.inference.entity.InferenceRecord;
 import com.vision.inference.mapper.DetectionMapper;
 import com.vision.inference.mapper.InferenceMapper;
+import com.vision.model.entity.Model;
+import com.vision.model.mapper.ModelMapper;
 import com.vision.model.service.InferenceClient;
+import com.vision.node.service.NodeRouter;
 import com.vision.rule.entity.Rule;
 import com.vision.rule.entity.RuleCondition;
 import com.vision.rule.mapper.RuleConditionMapper;
@@ -52,6 +55,7 @@ public class InferencePipeline {
     private final RuleConditionMapper ruleConditionMapper;
     private final AlertMapper alertMapper;
     private final AlertPushService alertPushService;
+    private final ModelMapper modelMapper;
 
     @Value("${vision.capture.ffmpeg-path:ffmpeg}")
     private String ffmpegPath;
@@ -170,7 +174,21 @@ public class InferencePipeline {
      */
     private Map<String, Object> performInference(String imageUrl, Camera camera) {
         try {
-            Map<String, Object> result = inferenceClient.predict(imageUrl, null, BigDecimal.valueOf(0.5));
+            // 查找第一个已加载的模型及其所在节点
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Model> wrapper =
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+            wrapper.eq(Model::getStatus, "loaded")
+                   .isNotNull(Model::getNodeId)
+                   .last("LIMIT 1");
+            Model loadedModel = modelMapper.selectOne(wrapper);
+
+            if (loadedModel == null) {
+                log.warn("没有已加载的模型，无法推理: cameraId={}", camera.getId());
+                return null;
+            }
+
+            Map<String, Object> result = inferenceClient.predict(
+                    loadedModel.getNodeId(), imageUrl, loadedModel.getId(), BigDecimal.valueOf(0.5));
 
             log.debug("推理完成: cameraId={}, result={}", camera.getId(), result);
             return result;
