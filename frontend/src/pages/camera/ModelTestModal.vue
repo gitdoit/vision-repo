@@ -18,16 +18,13 @@
           <div v-if="capturedImage" class="relative">
             <img :src="capturedImage" class="w-full rounded-lg" alt="截取帧" />
 
-            <!-- Segmentation masks (rendered below boxes via <img> overlays) -->
-            <template v-if="testResult && (resultTaskType === 'segment' || resultTaskType === 'semantic_seg') && capturedSize">
-              <img
-                v-for="(det, idx) in testResult.objects"
+            <!-- Segmentation masks (colorized per-object overlays) -->
+            <template v-if="testResult && capturedSize && testResult.objects.some(o => o.mask)">
+              <canvas
+                v-for="(det, idx) in testResult.objects.filter(o => o.mask)"
                 :key="'mask-' + idx"
-                v-show="det.mask"
-                :src="'data:image/png;base64,' + det.mask"
+                :ref="(el) => colorizeMask(el as HTMLCanvasElement, det.mask!, boxColors[idx % boxColors.length])"
                 class="absolute inset-0 h-full w-full rounded-lg pointer-events-none"
-                :style="{ opacity: 0.35, mixBlendMode: 'screen' }"
-                alt=""
               />
             </template>
 
@@ -195,7 +192,7 @@
                     {{ idx + 1 }}
                   </span>
                   <span class="text-sm">{{ det.label }}</span>
-                  <Icon v-if="(resultTaskType === 'segment' || resultTaskType === 'semantic_seg') && det.mask" icon="mdi:texture-box" class="text-xs text-on-surface-variant" title="含分割掩码" />
+                  <Icon v-if="det.mask" icon="mdi:texture-box" class="text-xs text-on-surface-variant" title="含分割掩码" />
                   <Icon v-if="resultTaskType === 'pose' && det.keypoints" icon="mdi:human" class="text-xs text-on-surface-variant" title="含关键点" />
                 </div>
                 <n-tag
@@ -208,7 +205,7 @@
             </div>
             <div class="rounded-lg border border-border p-2 text-xs text-on-surface-variant">
               <p>检测到 <strong>{{ testResult.objects.length }}</strong> 个目标</p>
-              <p v-if="resultTaskType === 'segment' || resultTaskType === 'semantic_seg'">其中 <strong>{{ testResult.objects.filter(o => o.mask).length }}</strong> 个含分割掩码</p>
+              <p v-if="testResult.objects.some(o => o.mask)">其中 <strong>{{ testResult.objects.filter(o => o.mask).length }}</strong> 个含分割掩码</p>
               <p v-if="resultTaskType === 'pose'">其中 <strong>{{ testResult.objects.filter(o => o.keypoints?.length).length }}</strong> 个含关键点</p>
               <p>推理耗时 <strong>{{ testResult.inferenceTimeMs.toFixed(1) }}ms</strong></p>
             </div>
@@ -258,6 +255,41 @@ const loadingModels = ref(false)
 // Box colors for different detections
 const boxColors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
 
+/** Parse hex color to [r,g,b] */
+function hexToRgb(hex: string): [number, number, number] {
+  const v = parseInt(hex.replace('#', ''), 16)
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255]
+}
+
+/** Draw a colorized semi-transparent mask onto a canvas element */
+function colorizeMask(canvas: HTMLCanvasElement | null, maskB64: string, color: string) {
+  if (!canvas || !maskB64) return
+  const img = new Image()
+  img.onload = () => {
+    canvas.width = img.width
+    canvas.height = img.height
+    const ctx = canvas.getContext('2d')!
+    ctx.clearRect(0, 0, img.width, img.height)
+    ctx.drawImage(img, 0, 0)
+    const imageData = ctx.getImageData(0, 0, img.width, img.height)
+    const data = imageData.data
+    const [r, g, b] = hexToRgb(color)
+    for (let i = 0; i < data.length; i += 4) {
+      const alpha = data[i] // grayscale mask: use R channel as intensity
+      if (alpha > 30) {
+        data[i] = r
+        data[i + 1] = g
+        data[i + 2] = b
+        data[i + 3] = Math.round(alpha * 0.5) // 50% opacity
+      } else {
+        data[i + 3] = 0 // fully transparent
+      }
+    }
+    ctx.putImageData(imageData, 0, 0)
+  }
+  img.src = 'data:image/png;base64,' + maskB64
+}
+
 // COCO skeleton pairs for pose visualization
 const skeletonPairs: [number, number][] = [
   [5, 6], [5, 7], [7, 9], [6, 8], [8, 10], // arms
@@ -269,7 +301,6 @@ const skeletonPairs: [number, number][] = [
 const taskTypeLabelMap: Record<string, string> = {
   detect: '目标检测',
   segment: '实例分割',
-  semantic_seg: '语义分割',
   classify: '图像分类',
   pose: '姿态估计',
 }
@@ -280,7 +311,7 @@ function taskTypeLabel(t?: string) {
 
 function taskTypeTagType(t?: string): 'success' | 'warning' | 'info' | 'error' {
   const map: Record<string, 'success' | 'warning' | 'info' | 'error'> = {
-    detect: 'success', segment: 'warning', semantic_seg: 'warning', classify: 'info', pose: 'error',
+    detect: 'success', segment: 'warning', classify: 'info', pose: 'error',
   }
   return map[t ?? 'detect'] ?? 'success'
 }

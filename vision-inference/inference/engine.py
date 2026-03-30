@@ -55,7 +55,7 @@ class InferenceEngine:
     """
     YOLO inference engine wrapper.
     Handles model retrieval and prediction execution.
-    Supports detect, segment, semantic_seg, classify, and pose task types.
+    Supports detect, segment, classify, and pose task types.
     """
 
     def __init__(self):
@@ -76,7 +76,7 @@ class InferenceEngine:
             image_source: Image URL, local path, or bytes
             model_id: ID of the model to use
             confidence_threshold: Minimum confidence for detections
-            task_type: One of 'detect', 'segment', 'semantic_seg', 'classify', 'pose'
+            task_type: One of 'detect', 'segment', 'classify', 'pose'
             iou_threshold: IoU threshold for NMS
 
         Returns:
@@ -111,7 +111,7 @@ class InferenceEngine:
         # Dispatch to task-specific parser
         if task_type == 'classify':
             return self._parse_classify(result, model), inference_time_ms
-        elif task_type in ('segment', 'semantic_seg'):
+        elif task_type == 'segment':
             return self._parse_segment(result, model, image.shape), inference_time_ms
         elif task_type == 'pose':
             return self._parse_pose(result, model), inference_time_ms

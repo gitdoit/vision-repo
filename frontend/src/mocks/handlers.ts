@@ -145,18 +145,6 @@ export const handlers = [
       })
     }
 
-    if (taskType === 'semantic_seg') {
-      return HttpResponse.json({
-        taskType: 'semantic_seg',
-        objects: [
-          { label: 'road', confidence: 0.96, bbox: [0, 300, 640, 480], mask: '' },
-          { label: 'building', confidence: 0.91, bbox: [50, 50, 400, 300], mask: '' },
-          { label: 'vegetation', confidence: 0.88, bbox: [420, 80, 640, 320], mask: '' },
-        ],
-        inferenceTimeMs: 38.5,
-      })
-    }
-
     if (taskType === 'pose') {
       return HttpResponse.json({
         taskType: 'pose',

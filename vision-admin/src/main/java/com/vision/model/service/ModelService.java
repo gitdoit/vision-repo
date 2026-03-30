@@ -86,7 +86,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         BeanUtils.copyProperties(dto, model);
         model.setId(IdUtil.uuid());
         model.setStatus("unloaded");
-        model.setConfidenceThreshold(BigDecimal.valueOf(0.50));
+        model.setConfidenceThreshold(BigDecimal.valueOf(0.25));
         model.setInputResolution("640x640");
         model.setMaxConcurrency(1);
         model.setAvgLatency(0);

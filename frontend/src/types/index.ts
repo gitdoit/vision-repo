@@ -88,7 +88,7 @@ export interface PlatformImportResult {
 }
 
 /** 模型任务类型 */
-export type ModelTaskType = 'detect' | 'segment' | 'semantic_seg' | 'classify' | 'pose'
+export type ModelTaskType = 'detect' | 'segment' | 'classify' | 'pose'
 
 export interface Model {
   id: string

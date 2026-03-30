@@ -302,8 +302,7 @@ const businessTagOptions = [
 
 const taskTypeOptions = [
   { label: '目标检测 (Detection)', value: 'detect' },
-  { label: '实例分割 (Instance Segmentation)', value: 'segment' },
-  { label: '语义分割 (Semantic Segmentation)', value: 'semantic_seg' },
+  { label: '实例分割 (Segmentation)', value: 'segment' },
   { label: '图像分类 (Classification)', value: 'classify' },
   { label: '姿态估计 (Pose)', value: 'pose' },
 ]
@@ -377,7 +376,6 @@ function getTaskTypeLabel(taskType?: string) {
   const labels: Record<string, string> = {
     detect: '目标检测',
     segment: '实例分割',
-    semantic_seg: '语义分割',
     classify: '图像分类',
     pose: '姿态估计',
   }
@@ -388,7 +386,6 @@ function getTaskTypeTagType(taskType?: string) {
   const types: Record<string, 'success' | 'warning' | 'info' | 'error'> = {
     detect: 'success',
     segment: 'warning',
-    semantic_seg: 'warning',
     classify: 'info',
     pose: 'error',
   }

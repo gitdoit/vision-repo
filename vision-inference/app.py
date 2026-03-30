@@ -48,7 +48,7 @@ def predict():
             "image_url": "...",       # URL or local path
             "model_id": "...",
             "confidence_threshold": 0.5,  # optional
-            "task_type": "detect"         # optional: detect/segment/semantic_seg/classify/pose
+            "task_type": "detect"         # optional: detect/segment/classify/pose
         }
 
     Response (detect/segment/pose):
