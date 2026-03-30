@@ -4,9 +4,21 @@
     <div class="w-60 shrink-0 rounded-xl bg-bg-card p-4">
       <div class="mb-3 flex items-center justify-between">
         <h3 class="text-sm font-semibold">区域分组</h3>
-        <button class="text-on-surface-variant hover:text-primary transition-colors">
-          <Icon icon="mdi:plus-box" class="text-lg" />
-        </button>
+        <n-popover trigger="click" placement="bottom" :show="showGroupPopover">
+          <template #trigger>
+            <button class="text-on-surface-variant hover:text-primary transition-colors" @click="showGroupPopover = true">
+              <Icon icon="mdi:plus-box" class="text-lg" />
+            </button>
+          </template>
+          <div class="w-52 space-y-2">
+            <p class="text-xs font-semibold">新增分组</p>
+            <n-input v-model:value="newGroupName" size="small" placeholder="分组名称" @keydown.enter="handleCreateGroup" />
+            <div class="flex justify-end gap-1">
+              <n-button size="tiny" @click="showGroupPopover = false">取消</n-button>
+              <n-button size="tiny" type="primary" @click="handleCreateGroup">确定</n-button>
+            </div>
+          </div>
+        </n-popover>
       </div>
       <div class="space-y-1">
         <div
@@ -59,21 +71,22 @@
     </div>
 
     <!-- Right: Camera List -->
-    <div class="flex-1 rounded-xl bg-bg-card p-6">
-      <div class="mb-4 flex items-center justify-between">
+    <div class="flex flex-1 flex-col overflow-hidden rounded-xl bg-bg-card p-6">
+      <div class="mb-4 flex shrink-0 items-center justify-between">
         <div class="flex items-center gap-3">
-          <n-input v-model:value="searchQuery" placeholder="搜索摄像头..." size="small" class="w-60">
+          <n-input v-model:value="searchQuery" placeholder="搜索名称/标签..." size="small" class="w-60" clearable @keydown.enter="handleSearch" @clear="handleSearch">
             <template #prefix>
               <Icon icon="mdi:magnify" class="text-on-surface-variant" />
             </template>
           </n-input>
           <n-select
-            v-model:value="sourceFilter"
+            v-model:value="statusFilter"
             size="small"
-            class="w-32"
-            :options="sourceOptions"
-            placeholder="来源"
+            class="w-28"
+            :options="statusOptions"
+            placeholder="状态"
             clearable
+            @update:value="handleSearch"
           />
         </div>
         <div class="flex items-center gap-2">
@@ -95,12 +108,20 @@
         :loading="cameraStore.loading"
         size="small"
         :row-key="(row: Camera) => row.id"
+        flex-height
+        class="flex-1"
       />
 
-      <div class="mt-4 flex justify-end">
+      <div class="mt-4 flex shrink-0 justify-end">
         <n-pagination
-          :page-count="Math.ceil(cameraStore.total / 10)"
+          v-model:page="cameraStore.page"
+          v-model:page-size="cameraStore.pageSize"
+          :item-count="cameraStore.total"
+          :page-sizes="[10, 20, 50]"
+          show-size-picker
           size="small"
+          @update:page="handlePageChange"
+          @update:page-size="handlePageSizeChange"
         />
       </div>
     </div>
@@ -214,27 +235,27 @@
           <h4 class="text-sm font-semibold mb-3">添加视频平台</h4>
           <n-form class="space-y-3">
             <n-form-item label="平台名称" size="small">
-              <n-input placeholder="如: 公司视频管理平台" />
+              <n-input v-model:value="platformForm.name" placeholder="如: 合肥视频平台" />
             </n-form-item>
             <n-form-item label="API 地址" size="small">
-              <n-input placeholder="http://192.168.x.x:port/api" />
+              <n-input v-model:value="platformForm.apiBase" placeholder="http://10.100.121.12:18080" />
             </n-form-item>
-            <n-form-item label="认证方式" size="small">
-              <n-select :options="authOptions" placeholder="选择认证方式" />
+            <n-form-item label="用户名" size="small">
+              <n-input v-model:value="platformForm.username" placeholder="请输入用户名" />
             </n-form-item>
-            <n-form-item label="凭证" size="small">
-              <n-input placeholder="Token 或 用户名:密码" type="password" show-password-on="click" />
+            <n-form-item label="密码" size="small">
+              <n-input v-model:value="platformForm.password" placeholder="请输入密码" type="password" show-password-on="click" />
             </n-form-item>
             <n-form-item label="自动同步" size="small">
               <div class="flex items-center gap-3">
-                <n-switch />
-                <n-input-number placeholder="间隔(分钟)" :min="5" :max="1440" size="small" class="w-36" />
+                <n-switch v-model:value="platformForm.autoSync" />
+                <n-input-number v-model:value="platformForm.syncIntervalMin" placeholder="间隔(分钟)" :min="5" :max="1440" size="small" class="w-36" :disabled="!platformForm.autoSync" />
               </div>
             </n-form-item>
           </n-form>
           <div class="flex gap-2 mt-3">
             <n-button size="small" @click="showAddPlatform = false">取消</n-button>
-            <n-button size="small" type="primary">保存</n-button>
+            <n-button size="small" type="primary" :loading="savingPlatform" @click="handleSavePlatform">保存</n-button>
           </div>
         </div>
       </n-drawer-content>
@@ -243,7 +264,24 @@
     <!-- Import Modal -->
     <n-modal v-model:show="showImportModal" preset="card" title="批量导入摄像头" :style="{ width: '520px' }">
       <div class="space-y-4">
-        <n-tabs type="line" animated size="small">
+        <n-tabs type="line" animated size="small" default-value="platform">
+          <n-tab-pane name="platform" tab="从视频平台导入">
+            <n-form class="mt-3 space-y-1" label-placement="left" label-width="90">
+              <n-form-item label="平台地址">
+                <n-input v-model:value="importForm.apiBase" placeholder="http://10.100.121.12:18080" />
+              </n-form-item>
+              <n-form-item label="用户名">
+                <n-input v-model:value="importForm.username" placeholder="admin" />
+              </n-form-item>
+              <n-form-item label="密码">
+                <n-input v-model:value="importForm.password" placeholder="请输入密码（MD5）" type="password" show-password-on="click" />
+              </n-form-item>
+            </n-form>
+            <div class="mt-2 rounded bg-bg-void p-3 text-xs text-on-surface-variant leading-relaxed">
+              <p>填写视频平台地址和账号密码，将自动登录并全量同步设备信息。</p>
+              <p class="mt-1">同步规则：以设备ID去重，已存在的设备将更新信息，新设备自动创建。</p>
+            </div>
+          </n-tab-pane>
           <n-tab-pane name="json" tab="JSON 导入">
             <n-input
               type="textarea"
@@ -264,10 +302,24 @@
       <template #footer>
         <div class="flex justify-end gap-2">
           <n-button size="small" @click="showImportModal = false">取消</n-button>
-          <n-button size="small" type="primary">导入</n-button>
+          <n-button size="small" type="primary" :loading="importing" @click="handleBatchImport">导入</n-button>
         </div>
       </template>
     </n-modal>
+
+    <!-- Video Preview Modal -->
+    <n-modal v-model:show="showPreviewModal" preset="card" :title="previewCamera?.name || '实时监控'" :style="{ width: '720px' }">
+      <FlvPlayer v-if="showPreviewModal && previewCamera?.streamUrl" :url="previewCamera.streamUrl" />
+      <div v-else class="flex items-center justify-center py-16 text-on-surface-variant">
+        <div class="text-center">
+          <Icon icon="mdi:video-off" class="text-4xl mb-2" />
+          <p class="text-sm">该摄像头暂无视频流地址</p>
+        </div>
+      </div>
+    </n-modal>
+
+    <!-- Model Test Modal -->
+    <ModelTestModal v-model:show="showModelTestModal" :camera="testCamera" />
   </div>
 </template>
 
@@ -276,22 +328,56 @@ import { ref, computed, onMounted, h } from 'vue'
 import {
   NInput, NButton, NDataTable, NPagination, NDrawer, NDrawerContent,
   NTabs, NTabPane, NForm, NFormItem, NSelect, NTag, NSwitch,
-  NModal, NInputNumber,
+  NModal, NInputNumber, NPopover, useMessage,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { Icon } from '@iconify/vue'
 import { useCameraStore } from '@/stores/camera'
 import type { Camera } from '@/types'
 import * as cameraApi from '@/api/modules/camera'
+import FlvPlayer from '@/components/FlvPlayer.vue'
+import ModelTestModal from './ModelTestModal.vue'
 
 const cameraStore = useCameraStore()
+const message = useMessage()
 const searchQuery = ref('')
 const showDrawer = ref(false)
 const showPlatformDrawer = ref(false)
 const showAddPlatform = ref(false)
 const showImportModal = ref(false)
 const selectedGroupId = ref<string | null>(null)
-const sourceFilter = ref<string | null>(null)
+const statusFilter = ref<string | null>(null)
+
+// 新增分组
+const showGroupPopover = ref(false)
+const newGroupName = ref('')
+
+// 视频预览
+const showPreviewModal = ref(false)
+const previewCamera = ref<Camera | null>(null)
+
+// 模型测试
+const showModelTestModal = ref(false)
+const testCamera = ref<Camera | null>(null)
+
+// 添加平台表单
+const platformForm = ref({
+  name: '',
+  apiBase: '',
+  username: '',
+  password: '',
+  autoSync: false,
+  syncIntervalMin: 60,
+})
+const savingPlatform = ref(false)
+
+// 批量导入表单
+const importForm = ref({
+  apiBase: '',
+  username: '',
+  password: '',
+})
+const importing = ref(false)
 
 const groups = computed(() => cameraStore.groups)
 
@@ -305,12 +391,107 @@ function selectGroup(id: string) {
   selectedGroupId.value = id
 }
 
+function getSearchParams(): Record<string, unknown> {
+  const params: Record<string, unknown> = {}
+  if (searchQuery.value) params.keyword = searchQuery.value
+  if (statusFilter.value) params.status = statusFilter.value
+  return params
+}
+
+function handleSearch() {
+  cameraStore.page = 1
+  cameraStore.fetchCameras(getSearchParams())
+}
+
+function handlePageChange() {
+  cameraStore.fetchCameras(getSearchParams())
+}
+
+function handlePageSizeChange() {
+  cameraStore.page = 1
+  cameraStore.fetchCameras(getSearchParams())
+}
+
+async function handleCreateGroup() {
+  if (!newGroupName.value.trim()) {
+    message.warning('请输入分组名称')
+    return
+  }
+  try {
+    await cameraStore.createGroup({ name: newGroupName.value.trim() })
+    message.success('分组创建成功')
+    newGroupName.value = ''
+    showGroupPopover.value = false
+  } catch (e: unknown) {
+    message.error('创建失败: ' + (e instanceof Error ? e.message : String(e)))
+  }
+}
+
+function handlePreview(camera: Camera) {
+  previewCamera.value = camera
+  showPreviewModal.value = true
+}
+
+function handleModelTest(camera: Camera) {
+  testCamera.value = camera
+  showModelTestModal.value = true
+}
+
 async function handleTestPlatform(id: string) {
   await cameraApi.testVideoPlatform(id)
 }
 
 async function handleSyncPlatform(id: string) {
   await cameraStore.syncPlatform(id)
+}
+
+async function handleSavePlatform() {
+  const f = platformForm.value
+  if (!f.name || !f.apiBase || !f.username || !f.password) {
+    message.warning('请填写完整的平台信息')
+    return
+  }
+  savingPlatform.value = true
+  try {
+    await cameraApi.createVideoPlatform({
+      name: f.name,
+      apiBase: f.apiBase,
+      authType: 'basic',
+      credential: f.username + ':' + f.password,
+      autoSync: f.autoSync,
+      syncIntervalMin: f.syncIntervalMin,
+    })
+    message.success('平台添加成功')
+    showAddPlatform.value = false
+    platformForm.value = { name: '', apiBase: '', username: '', password: '', autoSync: false, syncIntervalMin: 60 }
+    await cameraStore.fetchPlatforms()
+  } catch (e: unknown) {
+    message.error('添加失败: ' + (e instanceof Error ? e.message : String(e)))
+  } finally {
+    savingPlatform.value = false
+  }
+}
+
+async function handleBatchImport() {
+  if (!importForm.value.apiBase || !importForm.value.username || !importForm.value.password) {
+    message.warning('请填写完整的平台信息')
+    return
+  }
+  importing.value = true
+  try {
+    const result = await cameraStore.batchImportFromPlatform({
+      apiBase: importForm.value.apiBase,
+      username: importForm.value.username,
+      password: importForm.value.password,
+    })
+    message.success(`导入完成：共 ${result.total} 台，新增 ${result.added}，更新 ${result.updated}，失败 ${result.failed}`)
+    showImportModal.value = false
+    importForm.value = { apiBase: '', username: '', password: '' }
+  } catch (e: unknown) {
+    message.error('导入失败: ' + (e instanceof Error ? e.message : String(e)))
+  } finally {
+    importing.value = false
+  }
 }
 
 const businessOptions = [
@@ -320,21 +501,14 @@ const businessOptions = [
   { label: '安全合规', value: 'Safety' },
 ]
 
-const sourceOptions = [
-  { label: '全部来源', value: null },
-  { label: '手动添加', value: 'manual' },
-  { label: '平台同步', value: 'synced' },
-]
-
-const authOptions = [
-  { label: 'Token 认证', value: 'token' },
-  { label: '账号密码', value: 'basic' },
-  { label: '无认证', value: 'none' },
+const statusOptions = [
+  { label: '在线', value: 'online' },
+  { label: '离线', value: 'offline' },
 ]
 
 const columns: DataTableColumns<Camera> = [
-  { title: 'ID', key: 'id', width: 140 },
   { title: '名称', key: 'name', width: 180 },
+  { title: '标签', key: 'label', width: 120, ellipsis: { tooltip: true } },
   {
     title: '来源', key: 'source', width: 90,
     render: (row) => h(NTag, {
@@ -360,11 +534,13 @@ const columns: DataTableColumns<Camera> = [
     }, { default: () => row.status === 'online' ? '在线' : row.status === 'offline' ? '离线' : '异常' }),
   },
   {
-    title: '操作', key: 'actions', width: 120,
-    render: () => h('div', { class: 'flex gap-2' }, [
-      h(Icon, { icon: 'mdi:history', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base' }),
-      h(Icon, { icon: 'mdi:pencil', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base' }),
-      h(Icon, { icon: 'mdi:delete', class: 'cursor-pointer text-on-surface-variant hover:text-error text-base' }),
+    title: '操作', key: 'actions', width: 180,
+    render: (row) => h('div', { class: 'flex gap-2' }, [
+      h(Icon, { icon: 'mdi:play-circle', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base', title: '实时预览', onClick: () => handlePreview(row) }),
+      h(Icon, { icon: 'mdi:brain', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base', title: '模型测试', onClick: () => handleModelTest(row) }),
+      h(Icon, { icon: 'mdi:history', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base', title: '历史记录' }),
+      h(Icon, { icon: 'mdi:pencil', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base', title: '编辑' }),
+      h(Icon, { icon: 'mdi:delete', class: 'cursor-pointer text-on-surface-variant hover:text-error text-base', title: '删除' }),
     ]),
   },
 ]

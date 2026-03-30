@@ -21,6 +21,8 @@ export interface Camera {
   platformId?: string
   /** 视频平台中的通道编号 */
   channelNo?: string
+  /** 标签名称（来自视频平台） */
+  label?: string
 }
 
 export interface TaskStatus {
@@ -69,14 +71,36 @@ export interface SyncResult {
   syncTime: string
 }
 
+/** 从视频平台批量导入请求 */
+export interface PlatformImportRequest {
+  apiBase: string
+  username: string
+  password: string
+}
+
+/** 批量导入结果 */
+export interface PlatformImportResult {
+  total: number
+  added: number
+  updated: number
+  failed: number
+  syncTime: string
+}
+
+/** 模型任务类型 */
+export type ModelTaskType = 'detect' | 'segment' | 'semantic_seg' | 'classify' | 'pose'
+
 export interface Model {
   id: string
   name: string
   version: string
   businessTag: string
+  taskType: ModelTaskType
   engineSupport: string[]
   targetHardware: string
   status: 'loaded' | 'unloaded'
+  device?: string
+  deviceName?: string
   confidenceThreshold: number
   inputResolution: string
   maxConcurrency: number
@@ -146,6 +170,37 @@ export interface RelatedAlert {
   title: string
   time: string
   severity: 'severe' | 'warning' | 'info'
+}
+
+/** 模型测试请求 */
+export interface ModelTestRequest {
+  modelId: string
+  confidenceThreshold?: number
+}
+
+/** 模型测试结果 */
+export interface ModelTestResult {
+  taskType: ModelTaskType
+  objects: ModelTestDetection[]
+  classifications?: ModelTestClassification[]
+  inferenceTimeMs: number
+}
+
+/** 模型测试检测对象（detect / segment / pose） */
+export interface ModelTestDetection {
+  label: string
+  confidence: number
+  bbox: number[] // [x1, y1, x2, y2]
+  /** Base64 PNG mask（仅 segment 模型） */
+  mask?: string
+  /** 关键点 [[x,y,conf], ...]（仅 pose 模型） */
+  keypoints?: number[][]
+}
+
+/** 模型测试分类结果（classify 模型） */
+export interface ModelTestClassification {
+  label: string
+  confidence: number
 }
 
 export interface DashboardStats {

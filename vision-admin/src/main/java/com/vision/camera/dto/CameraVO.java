@@ -82,6 +82,11 @@ public class CameraVO {
     private String channelNo;
 
     /**
+     * 标签名称
+     */
+    private String label;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createdAt;
@@ -109,6 +114,7 @@ public class CameraVO {
         vo.setSource(entity.getSource());
         vo.setPlatformId(entity.getPlatformId());
         vo.setChannelNo(entity.getChannelNo());
+        vo.setLabel(entity.getLabel());
         vo.setCreatedAt(entity.getCreatedAt());
         vo.setUpdatedAt(entity.getUpdatedAt());
         return vo;

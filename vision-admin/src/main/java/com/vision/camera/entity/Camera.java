@@ -80,6 +80,11 @@ public class Camera {
     private String channelNo;
 
     /**
+     * 标签名称（来自视频平台）
+     */
+    private String label;
+
+    /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)

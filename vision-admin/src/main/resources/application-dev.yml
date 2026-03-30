@@ -10,6 +10,9 @@ spring:
 vision:
   inference:
     service-url: http://localhost:5000
+    auto-start: true
+    python-path: D:/repository/conda/envs/vision-inference/python.exe
+    working-dir: ../vision-inference
 
   storage:
     type: local

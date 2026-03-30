@@ -1,6 +1,7 @@
 package com.vision.camera.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.vision.common.handler.JsonbTypeHandler;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
  * 对应表: video_platform
  */
 @Data
-@TableName("video_platform")
+@TableName(value = "video_platform", autoResultMap = true)
 public class VideoPlatform {
 
     @TableId(type = IdType.ASSIGN_UUID)
@@ -30,6 +31,7 @@ public class VideoPlatform {
 
     private LocalDateTime lastSyncTime;
 
+    @TableField(typeHandler = JsonbTypeHandler.class)
     private String lastSyncResult;
 
     private Integer camerasCount;

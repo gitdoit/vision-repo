@@ -40,4 +40,13 @@ public interface StorageService {
      * @return 是否存在
      */
     boolean exists(String path);
+
+    /**
+     * 将访问 URL 转换为本地文件系统绝对路径。
+     * 用于将存储在数据库中的 URL 还原为推理服务可访问的文件路径。
+     *
+     * @param url 文件的访问 URL（由 upload / getUrl 返回）
+     * @return 本地文件系统绝对路径
+     */
+    String resolveToFilePath(String url);
 }

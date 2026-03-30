@@ -15,19 +15,27 @@ import com.vision.inference.mapper.DetectionMapper;
 import com.vision.inference.mapper.InferenceMapper;
 import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
+import com.vision.model.entity.Model;
+import com.vision.model.mapper.ModelMapper;
+import com.vision.model.service.InferenceClient;
+import com.vision.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +49,47 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
     private final InferenceMapper inferenceMapper;
     private final DetectionMapper detectionMapper;
     private final CameraMapper cameraMapper;
+    private final ModelMapper modelMapper;
+    private final InferenceClient inferenceClient;
+    private final StorageService storageService;
+
+    /**
+     * 模型测试（单张图片推理）
+     */
+    public Map<String, Object> testInference(MultipartFile image, String modelId, BigDecimal confidenceThreshold) {
+        // 1. 查找模型，获取 taskType
+        Model model = modelMapper.selectById(modelId);
+        if (model == null) {
+            throw new BizException("模型不存在");
+        }
+        if (!"loaded".equals(model.getStatus())) {
+            throw new BizException("模型未加载，请先加载模型");
+        }
+
+        // 2. 保存上传图片
+        String path = "test/" + LocalDate.now() + "/" + UUID.randomUUID() + ".jpg";
+        String imageUrl;
+        try {
+            imageUrl = storageService.upload(image.getInputStream(), path, image.getContentType());
+        } catch (IOException e) {
+            throw new BizException("图片保存失败: " + e.getMessage());
+        }
+
+        // 3. 将 URL 解析为本地文件路径（Python 服务通过本地路径访问）
+        String filePath = storageService.resolveToFilePath(imageUrl);
+
+        // 4. 调用 Python 推理服务
+        String taskType = model.getTaskType() != null ? model.getTaskType() : "detect";
+        Map<String, Object> pythonResult = inferenceClient.predict(filePath, modelId, confidenceThreshold, taskType);
+
+        // 5. 转换 snake_case → camelCase，匹配前端类型定义
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("taskType", pythonResult.getOrDefault("task_type", taskType));
+        result.put("inferenceTimeMs", pythonResult.getOrDefault("inference_time_ms", 0));
+        result.put("objects", pythonResult.getOrDefault("objects", List.of()));
+        result.put("classifications", pythonResult.get("classifications"));
+        return result;
+    }
 
     /**
      * 分页查询推理记录

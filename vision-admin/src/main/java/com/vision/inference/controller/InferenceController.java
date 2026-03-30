@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -19,6 +20,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 /**
  * 推理记录控制器
@@ -85,6 +87,19 @@ public class InferenceController {
         try (OutputStream os = response.getOutputStream()) {
             os.write(data);
         }
+    }
+
+    /**
+     * 模型测试（单张图片推理）
+     */
+    @PostMapping("/test")
+    public R<Object> testInference(
+            @RequestParam("image") MultipartFile image,
+            @RequestParam("modelId") String modelId,
+            @RequestParam(value = "confidenceThreshold", defaultValue = "0.5") String confidenceThreshold) {
+        log.info("模型测试请求: modelId={}, threshold={}", modelId, confidenceThreshold);
+        Map<String, Object> result = inferenceService.testInference(image, modelId, new java.math.BigDecimal(confidenceThreshold));
+        return R.ok(result);
     }
 
     /**

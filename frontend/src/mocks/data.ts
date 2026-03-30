@@ -97,7 +97,8 @@ export const models: Model[] = [
   {
     id: 'm1', name: 'YOLOv8-Security', version: 'V2.1.0', businessTag: 'Security',
     engineSupport: ['TRT', 'ONNX'], targetHardware: 'GPU (NVIDIA)',
-    status: 'loaded', confidenceThreshold: 0.65, inputResolution: '640x640',
+    status: 'loaded', device: 'cuda', deviceName: 'NVIDIA GeForce RTX 3090', confidenceThreshold: 0.65, inputResolution: '640x640',
+    taskType: 'detect',
     maxConcurrency: 4, modelPath: '/opt/models/security/yolov8_s_2.1.engine',
     createdAt: '2023-10-24 14:20:11', author: 'AI_Deploy_Bot',
     versionHistory: [
@@ -110,6 +111,7 @@ export const models: Model[] = [
     id: 'm2', name: 'ResNet50-Classifier', version: 'V1.0.4', businessTag: 'Industrial',
     engineSupport: ['ONNX', 'EXC'], targetHardware: 'CPU (x86)',
     status: 'unloaded', confidenceThreshold: 0.70, inputResolution: '224x224',
+    taskType: 'classify',
     maxConcurrency: 2, modelPath: '/opt/models/industrial/resnet50_v1.onnx',
     createdAt: '2023-09-15 09:30:00', author: 'ML_Team',
     versionHistory: [
@@ -120,7 +122,8 @@ export const models: Model[] = [
   {
     id: 'm3', name: 'FaceNet-PRO-X', version: 'V4.2.0', businessTag: 'Access',
     engineSupport: ['TRT'], targetHardware: 'GPU (NVIDIA)',
-    status: 'loaded', confidenceThreshold: 0.80, inputResolution: '160x160',
+    status: 'loaded', device: 'cuda', deviceName: 'NVIDIA GeForce RTX 3090', confidenceThreshold: 0.80, inputResolution: '160x160',
+    taskType: 'detect',
     maxConcurrency: 8, modelPath: '/opt/models/access/facenet_pro_x.engine',
     createdAt: '2023-11-01 16:00:00', author: 'AI_Deploy_Bot',
     versionHistory: [

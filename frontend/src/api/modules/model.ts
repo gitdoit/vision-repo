@@ -9,12 +9,16 @@ export function getModel(id: string) {
   return client.get<Model>(`/models/${encodeURIComponent(id)}`)
 }
 
-export function loadModel(id: string) {
-  return client.post(`/models/${encodeURIComponent(id)}/load`)
+export function loadModel(id: string, device: string = 'cpu', deviceName?: string) {
+  return client.post(`/models/${encodeURIComponent(id)}/load`, null, { params: { device, deviceName } })
 }
 
 export function unloadModel(id: string) {
   return client.post(`/models/${encodeURIComponent(id)}/unload`)
+}
+
+export function getDeviceInfo() {
+  return client.get<{ devices: string[]; cuda_available: boolean; gpu_name: string | null }>('/models/device/info')
 }
 
 export function updateModelConfig(id: string, data: Partial<Model>) {
@@ -23,4 +27,27 @@ export function updateModelConfig(id: string, data: Partial<Model>) {
 
 export function deleteModel(id: string) {
   return client.delete(`/models/${encodeURIComponent(id)}`)
+}
+
+export function uploadModel(file: File, meta: {
+  name: string
+  version: string
+  taskType?: string
+  businessTag?: string
+  engineSupport?: string
+  targetHardware?: string
+  author?: string
+}) {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('name', meta.name)
+  form.append('version', meta.version)
+  if (meta.taskType) form.append('taskType', meta.taskType)
+  if (meta.businessTag) form.append('businessTag', meta.businessTag)
+  if (meta.engineSupport) form.append('engineSupport', meta.engineSupport)
+  if (meta.targetHardware) form.append('targetHardware', meta.targetHardware)
+  if (meta.author) form.append('author', meta.author)
+  return client.post<Model>('/models/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 }

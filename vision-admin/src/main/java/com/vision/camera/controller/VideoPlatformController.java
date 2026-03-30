@@ -1,8 +1,10 @@
 package com.vision.camera.controller;
 
+import com.vision.camera.dto.PlatformImportDTO;
 import com.vision.camera.entity.VideoPlatform;
 import com.vision.camera.service.VideoPlatformService;
 import com.vision.common.response.R;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -60,5 +62,11 @@ public class VideoPlatformController {
     public R<Map<String, Object>> sync(@PathVariable String id) {
         log.info("同步视频平台: id={}", id);
         return R.ok(videoPlatformService.syncPlatform(id));
+    }
+
+    @PostMapping("/batch-import")
+    public R<Map<String, Object>> batchImport(@Valid @RequestBody PlatformImportDTO dto) {
+        log.info("批量导入摄像头: apiBase={}", dto.getApiBase());
+        return R.ok(videoPlatformService.batchImportFromPlatform(dto));
     }
 }

@@ -13,6 +13,7 @@ import com.vision.model.mapper.ModelMapper;
 import com.vision.model.mapper.ModelVersionMapper;
 import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
+import com.vision.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -20,6 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -38,6 +40,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
     private final ModelMapper modelMapper;
     private final ModelVersionMapper modelVersionMapper;
     private final InferenceClient inferenceClient;
+    private final StorageService storageService;
 
     /**
      * 分页查询模型列表
@@ -132,6 +135,8 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         // 如果模型已加载，先卸载
         if ("loaded".equals(model.getStatus())) {
             unloadModel(id);
+            // 重新查询，unloadModel 已更新状态
+            model = modelMapper.selectById(id);
         }
 
         modelMapper.deleteById(id);
@@ -142,7 +147,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
      * 加载模型
      */
     @Transactional(rollbackFor = Exception.class)
-    public void loadModel(String id) {
+    public void loadModel(String id, String device, String deviceName) {
         Model model = modelMapper.selectById(id);
         if (model == null) {
             throw new BizException("模型不存在");
@@ -155,14 +160,17 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         // 更新状态为加载中
         model.setStatus("loading");
         modelMapper.updateById(model);
-        log.info("开始加载模型: id={}, path={}", id, model.getModelPath());
+        log.info("开始加载模型: id={}, path={}, device={}", id, model.getModelPath(), device);
 
         try {
-            // 调用Python推理服务加载模型
-            inferenceClient.loadModel(id, model.getModelPath(), "cpu");
+            // 将存储 URL 转换为本地文件系统路径后发送给推理服务
+            String localPath = storageService.resolveToFilePath(model.getModelPath());
+            inferenceClient.loadModel(id, localPath, device);
 
             // 更新状态为已加载
             model.setStatus("loaded");
+            model.setDevice(device);
+            model.setDeviceName(deviceName);
             modelMapper.updateById(model);
             log.info("模型加载成功: id={}", id);
         } catch (Exception e) {
@@ -193,6 +201,8 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
 
             // 更新状态
             model.setStatus("unloaded");
+            model.setDevice(null);
+            model.setDeviceName(null);
             modelMapper.updateById(model);
             log.info("模型卸载成功: id={}", id);
         } catch (Exception e) {
@@ -233,6 +243,31 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         wrapper.eq(ModelVersion::getModelId, modelId);
         wrapper.orderByDesc(ModelVersion::getCreatedAt);
         return modelVersionMapper.selectList(wrapper);
+    }
+
+    /**
+     * 上传模型文件并创建记录
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ModelVO uploadModel(MultipartFile file, ModelCreateDTO dto) {
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isBlank()) {
+            throw new BizException("文件名不能为空");
+        }
+
+        // 存储模型文件：models/{date}/{uuid}_{原始文件名}
+        String date = LocalDateTime.now().toLocalDate().toString();
+        String storagePath = "models/" + date + "/" + IdUtil.uuid() + "_" + originalFilename;
+
+        try {
+            String url = storageService.upload(file.getInputStream(), storagePath, file.getContentType());
+            dto.setModelPath(url);
+        } catch (Exception e) {
+            log.error("模型文件上传失败: {}", originalFilename, e);
+            throw new BizException("模型文件上传失败: " + e.getMessage());
+        }
+
+        return createModel(dto);
     }
 
     /**

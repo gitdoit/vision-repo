@@ -79,4 +79,19 @@ public class LocalStorageService implements StorageService {
         Path targetPath = basePath.resolve(path);
         return Files.exists(targetPath);
     }
+
+    @Override
+    public String resolveToFilePath(String url) {
+        String baseUrl = properties.getLocal().getBaseUrl();
+        String relativePath;
+        if (url.startsWith(baseUrl)) {
+            relativePath = url.substring(baseUrl.length());
+            if (relativePath.startsWith("/")) {
+                relativePath = relativePath.substring(1);
+            }
+        } else {
+            relativePath = url;
+        }
+        return basePath.resolve(relativePath).toAbsolutePath().toString();
+    }
 }

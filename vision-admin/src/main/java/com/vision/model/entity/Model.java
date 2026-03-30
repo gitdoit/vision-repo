@@ -36,6 +36,11 @@ public class Model {
     private String businessTag;
 
     /**
+     * 模型任务类型: detect/segment/semantic_seg/classify/pose
+     */
+    private String taskType;
+
+    /**
      * 支持的推理引擎: TRT,ONNX
      */
     private String engineSupport;
@@ -49,6 +54,16 @@ public class Model {
      * 状态: loaded/unloaded
      */
     private String status;
+
+    /**
+     * 当前加载设备: cpu/cuda
+     */
+    private String device;
+
+    /**
+     * 设备硬件名称，如 NVIDIA GeForce RTX 3060
+     */
+    private String deviceName;
 
     /**
      * 置信度阈值

@@ -73,6 +73,9 @@ public class InferenceClient {
                 !Boolean.TRUE.equals(response.getBody().get("success"))) {
                 throw new BizException("模型卸载失败");
             }
+        } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+            // 推理服务中模型已不存在（如服务重启），视为卸载成功
+            log.warn("推理服务中模型已不存在，视为卸载成功: modelId={}", modelId);
         } catch (Exception e) {
             log.error("卸载模型失败: modelId={}", modelId, e);
             throw new BizException("模型卸载失败: " + e.getMessage());
@@ -97,15 +100,47 @@ public class InferenceClient {
     }
 
     /**
+     * 获取推理服务设备信息（CPU/GPU）
+     */
+    public Map<String, Object> getDeviceInfo() {
+        String url = inferenceServiceUrl + "/device/info";
+
+        try {
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return response.getBody();
+            }
+        } catch (Exception e) {
+            log.error("获取设备信息失败", e);
+        }
+        // 默认返回仅CPU
+        Map<String, Object> fallback = new HashMap<>();
+        fallback.put("devices", List.of("cpu"));
+        fallback.put("cuda_available", false);
+        fallback.put("gpu_name", null);
+        return fallback;
+    }
+
+    /**
      * 发送推理请求
      */
     public Map<String, Object> predict(String imageUrl, String modelId, BigDecimal confidenceThreshold) {
+        return predict(imageUrl, modelId, confidenceThreshold, null);
+    }
+
+    /**
+     * 发送推理请求（指定任务类型）
+     */
+    public Map<String, Object> predict(String imageUrl, String modelId, BigDecimal confidenceThreshold, String taskType) {
         String url = inferenceServiceUrl + "/predict";
 
         Map<String, Object> request = new HashMap<>();
         request.put("image_url", imageUrl);
         request.put("model_id", modelId);
         request.put("confidence_threshold", confidenceThreshold);
+        if (taskType != null && !taskType.isEmpty()) {
+            request.put("task_type", taskType);
+        }
 
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);

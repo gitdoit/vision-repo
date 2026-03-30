@@ -44,7 +44,7 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
     /**
      * 分页查询摄像头列表
      */
-    public IPage<CameraVO> pageCameras(Integer page, Integer size, String groupId, String status) {
+    public IPage<CameraVO> pageCameras(Integer page, Integer size, String groupId, String status, String keyword) {
         Page<Camera> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Camera> wrapper = new LambdaQueryWrapper<>();
 
@@ -53,6 +53,9 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
         }
         if (status != null && !status.isEmpty()) {
             wrapper.eq(Camera::getStatus, status);
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            wrapper.and(w -> w.like(Camera::getName, keyword).or().like(Camera::getLabel, keyword));
         }
 
         wrapper.orderByDesc(Camera::getCreatedAt);
@@ -153,6 +156,34 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
                 .collect(Collectors.toList());
 
         return buildGroupTree(voList, null);
+    }
+
+    /**
+     * 创建分组
+     */
+    public CameraGroupVO createGroup(CameraGroup group) {
+        if (group.getName() == null || group.getName().isBlank()) {
+            throw new BizException("分组名称不能为空");
+        }
+        group.setId(IdUtil.uuid());
+        if (group.getSortOrder() == null) {
+            group.setSortOrder(0);
+        }
+        cameraGroupMapper.insert(group);
+        log.info("创建分组成功: id={}, name={}", group.getId(), group.getName());
+        return CameraGroupVO.fromEntity(group);
+    }
+
+    /**
+     * 删除分组
+     */
+    public void deleteGroup(String id) {
+        CameraGroup group = cameraGroupMapper.selectById(id);
+        if (group == null) {
+            throw new BizException("分组不存在");
+        }
+        cameraGroupMapper.deleteById(id);
+        log.info("删除分组成功: id={}", id);
     }
 
     /**

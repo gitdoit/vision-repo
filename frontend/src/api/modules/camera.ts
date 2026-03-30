@@ -1,5 +1,5 @@
 import client from '../client'
-import type { Camera, CameraGroup, VideoPlatform, SyncResult } from '@/types'
+import type { Camera, CameraGroup, VideoPlatform, SyncResult, PlatformImportRequest, PlatformImportResult } from '@/types'
 
 // ========== 摄像头 CRUD ==========
 
@@ -9,6 +9,14 @@ export function getCameras(params?: Record<string, unknown>) {
 
 export function getCameraGroups() {
   return client.get<CameraGroup[]>('/cameras/groups')
+}
+
+export function createCameraGroup(data: { name: string; parentId?: string }) {
+  return client.post<CameraGroup>('/cameras/groups', data)
+}
+
+export function deleteCameraGroup(id: string) {
+  return client.delete(`/cameras/groups/${encodeURIComponent(id)}`)
 }
 
 export function getCamera(id: string) {
@@ -58,4 +66,9 @@ export function testVideoPlatform(id: string) {
 /** 手动触发同步 */
 export function syncVideoPlatform(id: string) {
   return client.post<SyncResult>(`/video-platforms/${encodeURIComponent(id)}/sync`)
+}
+
+/** 从视频平台批量导入摄像头 */
+export function batchImportFromPlatform(data: PlatformImportRequest) {
+  return client.post<PlatformImportResult>('/video-platforms/batch-import', data)
 }

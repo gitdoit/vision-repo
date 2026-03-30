@@ -19,9 +19,12 @@ public class ModelVO {
     private String name;
     private String version;
     private String businessTag;
+    private String taskType;
     private List<String> engineSupport;
     private String targetHardware;
     private String status;
+    private String device;
+    private String deviceName;
     private BigDecimal confidenceThreshold;
     private String inputResolution;
     private Integer maxConcurrency;
@@ -40,6 +43,7 @@ public class ModelVO {
         vo.setName(entity.getName());
         vo.setVersion(entity.getVersion());
         vo.setBusinessTag(entity.getBusinessTag());
+        vo.setTaskType(entity.getTaskType());
         vo.setEngineSupport(
                 entity.getEngineSupport() != null && !entity.getEngineSupport().isEmpty()
                         ? Arrays.asList(entity.getEngineSupport().split(","))
@@ -47,6 +51,8 @@ public class ModelVO {
         );
         vo.setTargetHardware(entity.getTargetHardware());
         vo.setStatus(entity.getStatus());
+        vo.setDevice(entity.getDevice());
+        vo.setDeviceName(entity.getDeviceName());
         vo.setConfidenceThreshold(entity.getConfidenceThreshold());
         vo.setInputResolution(entity.getInputResolution());
         vo.setMaxConcurrency(entity.getMaxConcurrency());

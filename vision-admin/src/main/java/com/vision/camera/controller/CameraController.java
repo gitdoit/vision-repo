@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.vision.camera.dto.CameraCreateDTO;
 import com.vision.camera.dto.CameraGroupVO;
 import com.vision.camera.dto.CameraVO;
+import com.vision.camera.entity.CameraGroup;
 import com.vision.camera.service.CameraService;
 import com.vision.common.response.PageResult;
 import com.vision.common.response.R;
@@ -36,9 +37,10 @@ public class CameraController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(required = false) String groupId,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword) {
 
-        IPage<CameraVO> result = cameraService.pageCameras(page, size, groupId, status);
+        IPage<CameraVO> result = cameraService.pageCameras(page, size, groupId, status, keyword);
         return R.ok(new PageResult<>(result.getRecords(), result.getTotal()));
     }
 
@@ -92,6 +94,26 @@ public class CameraController {
     public R<List<CameraGroupVO>> getGroupTree() {
         List<CameraGroupVO> tree = cameraService.getGroupTree();
         return R.ok(tree);
+    }
+
+    /**
+     * 创建摄像头分组
+     */
+    @PostMapping("/groups")
+    public R<CameraGroupVO> createGroup(@RequestBody CameraGroup group) {
+        log.info("创建摄像头分组: name={}", group.getName());
+        CameraGroupVO vo = cameraService.createGroup(group);
+        return R.ok(vo);
+    }
+
+    /**
+     * 删除摄像头分组
+     */
+    @DeleteMapping("/groups/{id}")
+    public R<Void> deleteGroup(@PathVariable String id) {
+        log.info("删除摄像头分组: id={}", id);
+        cameraService.deleteGroup(id);
+        return R.ok();
     }
 
     /**

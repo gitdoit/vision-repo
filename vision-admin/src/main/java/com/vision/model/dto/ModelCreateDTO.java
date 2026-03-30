@@ -27,6 +27,11 @@ public class ModelCreateDTO {
     private String businessTag;
 
     /**
+     * 模型任务类型: detect/segment/semantic_seg/classify/pose
+     */
+    private String taskType;
+
+    /**
      * 支持的推理引擎
      */
     private String engineSupport;

@@ -6,14 +6,17 @@ import com.vision.model.dto.ModelCreateDTO;
 import com.vision.model.dto.ModelVO;
 import com.vision.model.entity.ModelVersion;
 import com.vision.model.service.ModelService;
+import com.vision.model.service.InferenceClient;
 import com.vision.common.response.PageResult;
 import com.vision.common.response.R;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 模型管理控制器
@@ -25,6 +28,7 @@ import java.util.List;
 public class ModelController {
 
     private final ModelService modelService;
+    private final InferenceClient inferenceClient;
 
     /**
      * 分页查询模型列表
@@ -85,9 +89,12 @@ public class ModelController {
      * 加载模型
      */
     @PostMapping("/{id}/load")
-    public R<Void> loadModel(@PathVariable String id) {
-        log.info("加载模型: id={}", id);
-        modelService.loadModel(id);
+    public R<Void> loadModel(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "cpu") String device,
+            @RequestParam(required = false) String deviceName) {
+        log.info("加载模型: id={}, device={}, deviceName={}", id, device, deviceName);
+        modelService.loadModel(id, device, deviceName);
         return R.ok();
     }
 
@@ -121,5 +128,41 @@ public class ModelController {
     public R<List<ModelVersion>> getModelVersions(@PathVariable String id) {
         List<ModelVersion> versions = modelService.getModelVersions(id);
         return R.ok(versions);
+    }
+
+    /**
+     * 上传模型文件并创建模型记录
+     */
+    @PostMapping("/upload")
+    public R<ModelVO> uploadModel(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("name") String name,
+            @RequestParam("version") String version,
+            @RequestParam(value = "businessTag", required = false) String businessTag,
+            @RequestParam(value = "taskType", required = false, defaultValue = "detect") String taskType,
+            @RequestParam(value = "engineSupport", required = false) String engineSupport,
+            @RequestParam(value = "targetHardware", required = false) String targetHardware,
+            @RequestParam(value = "author", required = false) String author) {
+
+        log.info("上传模型文件: name={}, taskType={}, fileName={}", name, taskType, file.getOriginalFilename());
+        ModelCreateDTO dto = new ModelCreateDTO();
+        dto.setName(name);
+        dto.setVersion(version);
+        dto.setBusinessTag(businessTag);
+        dto.setTaskType(taskType);
+        dto.setEngineSupport(engineSupport);
+        dto.setTargetHardware(targetHardware);
+        dto.setAuthor(author);
+
+        ModelVO vo = modelService.uploadModel(file, dto);
+        return R.ok(vo);
+    }
+
+    /**
+     * 获取推理服务设备信息（CPU/GPU）
+     */
+    @GetMapping("/device/info")
+    public R<Map<String, Object>> getDeviceInfo() {
+        return R.ok(inferenceClient.getDeviceInfo());
     }
 }

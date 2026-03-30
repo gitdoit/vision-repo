@@ -45,17 +45,29 @@ def predict():
 
     Request:
         {
-            "image_url": "...",  # URL or local path
+            "image_url": "...",       # URL or local path
             "model_id": "...",
-            "confidence_threshold": 0.5  # optional
+            "confidence_threshold": 0.5,  # optional
+            "task_type": "detect"         # optional: detect/segment/semantic_seg/classify/pose
         }
 
-    Response:
+    Response (detect/segment/pose):
         {
+            "task_type": "detect",
             "objects": [
-                {"label": "...", "confidence": 0.95, "bbox": [x1, y1, x2, y2]}
+                {"label": "...", "confidence": 0.95, "bbox": [x1, y1, x2, y2], "mask": "...", "keypoints": [...]}
             ],
             "inference_time_ms": 45
+        }
+
+    Response (classify):
+        {
+            "task_type": "classify",
+            "objects": [],
+            "classifications": [
+                {"label": "cat", "confidence": 0.95}
+            ],
+            "inference_time_ms": 12
         }
     """
     try:
@@ -66,6 +78,8 @@ def predict():
         image_url = data.get('image_url')
         model_id = data.get('model_id')
         confidence_threshold = data.get('confidence_threshold', Config.DEFAULT_CONFIDENCE_THRESHOLD)
+        task_type = data.get('task_type', 'detect')
+        iou_threshold = data.get('iou_threshold', 0.5)
 
         if not image_url:
             raise BadRequest('image_url is required')
@@ -73,16 +87,26 @@ def predict():
             raise BadRequest('model_id is required')
 
         # Run inference
-        detections, inference_time = inference_engine.predict(
+        results, inference_time = inference_engine.predict(
             image_source=image_url,
             model_id=model_id,
-            confidence_threshold=confidence_threshold
+            confidence_threshold=confidence_threshold,
+            task_type=task_type,
+            iou_threshold=iou_threshold
         )
 
-        return jsonify({
-            'objects': [d.to_dict() for d in detections],
+        response = {
+            'task_type': task_type,
             'inference_time_ms': round(inference_time, 2)
-        })
+        }
+
+        if task_type == 'classify':
+            response['objects'] = []
+            response['classifications'] = [r.to_dict() for r in results]
+        else:
+            response['objects'] = [d.to_dict() for d in results]
+
+        return jsonify(response)
 
     except BadRequest as e:
         return jsonify({'error': str(e)}), 400
@@ -197,6 +221,32 @@ def model_status():
             }
             for k, v in models.items()
         }
+    })
+
+
+@app.route('/device/info', methods=['GET'])
+def device_info():
+    """
+    Return available compute devices.
+
+    Response:
+        {
+            "devices": ["cpu", "cuda"],
+            "gpu_name": "NVIDIA GeForce RTX 3090",  # if GPU present
+            "cuda_available": true
+        }
+    """
+    import torch
+    cuda_available = torch.cuda.is_available()
+    devices = ['cpu']
+    gpu_name = None
+    if cuda_available:
+        devices.append('cuda')
+        gpu_name = torch.cuda.get_device_name(0)
+    return jsonify({
+        'devices': devices,
+        'cuda_available': cuda_available,
+        'gpu_name': gpu_name,
     })
 
 

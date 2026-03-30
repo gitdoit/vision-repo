@@ -7,6 +7,7 @@
         <result column="name" property="name" jdbcType="VARCHAR"/>
         <result column="version" property="version" jdbcType="VARCHAR"/>
         <result column="business_tag" property="businessTag" jdbcType="VARCHAR"/>
+        <result column="task_type" property="taskType" jdbcType="VARCHAR"/>
         <result column="engine_support" property="engineSupport" jdbcType="VARCHAR"/>
         <result column="target_hardware" property="targetHardware" jdbcType="VARCHAR"/>
         <result column="status" property="status" jdbcType="VARCHAR"/>

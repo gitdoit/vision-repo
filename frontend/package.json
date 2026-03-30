@@ -13,6 +13,7 @@
     "@vueuse/core": "^14.2.1",
     "axios": "^1.13.6",
     "echarts": "^6.0.0",
+    "mpegts.js": "^1.8.0",
     "msw": "^2.12.14",
     "naive-ui": "^2.44.1",
     "pinia": "^3.0.4",
@@ -26,6 +27,7 @@
     "tailwindcss": "^4.2.2",
     "typescript": "~5.6.2",
     "vite": "^5.4.10",
+    "vite-plugin-vue-devtools": "7.4.5",
     "vue-tsc": "^2.1.8"
   },
   "msw": {

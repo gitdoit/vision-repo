@@ -107,4 +107,10 @@ public class MinioStorageService implements StorageService {
             return false;
         }
     }
+
+    @Override
+    public String resolveToFilePath(String url) {
+        // MinIO 存储的文件无本地路径，直接返回 URL
+        return url;
+    }
 }
