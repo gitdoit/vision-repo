@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import {
   dashboardStats, weeklyTrend, alertRanking, realtimeAlerts,
   cameras, cameraGroups, models, rules, inferenceRecords,
-  videoPlatforms, inferenceNodes,
+  videoPlatforms, inferenceNodes, monitorTasks,
 } from './data'
 
 const BASE = '/api/v1'
@@ -236,4 +236,40 @@ export const handlers = [
       inferenceTimeMs: 23.5,
     })
   }),
+
+  // Monitor Tasks
+  http.get(`${BASE}/monitor-tasks`, ({ request }) => {
+    const url = new URL(request.url)
+    const page = parseInt(url.searchParams.get('page') || '1', 10)
+    const size = parseInt(url.searchParams.get('size') || '20', 10)
+    const status = url.searchParams.get('status') || ''
+    let filtered = monitorTasks
+    if (status) {
+      filtered = filtered.filter(t => t.status === status)
+    }
+    const start = (page - 1) * size
+    const items = filtered.slice(start, start + size)
+    return HttpResponse.json({ code: 200, message: 'ok', data: { items, total: filtered.length } })
+  }),
+  http.get(`${BASE}/monitor-tasks/:id`, ({ params }) => {
+    const task = monitorTasks.find(t => t.id === params.id)
+    return task
+      ? HttpResponse.json({ code: 200, message: 'ok', data: task })
+      : new HttpResponse(null, { status: 404 })
+  }),
+  http.post(`${BASE}/monitor-tasks`, () =>
+    HttpResponse.json({ code: 200, message: 'ok', data: monitorTasks[0] }, { status: 201 }),
+  ),
+  http.put(`${BASE}/monitor-tasks/:id`, () =>
+    HttpResponse.json({ code: 200, message: 'ok', data: monitorTasks[0] }),
+  ),
+  http.delete(`${BASE}/monitor-tasks/:id`, () =>
+    HttpResponse.json({ code: 200, message: 'ok', data: null }),
+  ),
+  http.post(`${BASE}/monitor-tasks/:id/start`, () =>
+    HttpResponse.json({ code: 200, message: 'ok', data: null }),
+  ),
+  http.post(`${BASE}/monitor-tasks/:id/stop`, () =>
+    HttpResponse.json({ code: 200, message: 'ok', data: null }),
+  ),
 ]

@@ -31,6 +31,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '推理节点管理', icon: 'mdi:server-network' },
       },
       {
+        path: 'tasks',
+        name: 'Tasks',
+        component: () => import('@/pages/task/MonitorTaskPage.vue'),
+        meta: { title: '监测任务管理', icon: 'mdi:clipboard-check-outline' },
+      },
+      {
         path: 'rules',
         name: 'Rules',
         component: () => import('@/pages/rule/RulePage.vue'),

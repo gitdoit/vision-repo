@@ -21,6 +21,11 @@ public class InferenceRecord {
     private String id;
 
     /**
+     * 监测任务ID
+     */
+    private String taskId;
+
+    /**
      * 事件ID
      */
     private String eventId;

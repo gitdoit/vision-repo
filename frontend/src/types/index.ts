@@ -279,3 +279,62 @@ export interface SystemLoad {
   memoryPercent: number
   gpuPercent?: number
 }
+
+/** 监测任务状态 */
+export type MonitorTaskStatus = 'stopped' | 'running' | 'error'
+
+/** 监测任务 */
+export interface MonitorTask {
+  id: string
+  name: string
+  description?: string
+  businessLine?: string
+  groupId: string
+  groupName?: string
+  modelId: string
+  modelName?: string
+  status: MonitorTaskStatus
+  captureFrequency: string
+  scheduleStartTime?: string
+  scheduleEndTime?: string
+  scheduleWeekdays?: string
+  effectiveStart?: string
+  effectiveEnd?: string
+  alertTarget?: string
+  alertConfidence: number
+  alertFrames: number
+  alertLevel: 'severe' | 'warning' | 'info'
+  pushMethods?: string
+  callbackUrl?: string
+  callbackHeaders?: string
+  nodeIds?: string
+  totalInference: number
+  totalAlert: number
+  lastInferenceTime?: string
+  lastAlertTime?: string
+  createdAt: string
+  updatedAt?: string
+}
+
+/** 监测任务创建/更新请求 */
+export interface MonitorTaskForm {
+  name: string
+  description?: string
+  businessLine?: string
+  groupId: string
+  modelId: string
+  captureFrequency?: string
+  scheduleStartTime?: string
+  scheduleEndTime?: string
+  scheduleWeekdays?: string
+  effectiveStart?: string
+  effectiveEnd?: string
+  alertTarget?: string
+  alertConfidence?: number
+  alertFrames?: number
+  alertLevel?: string
+  pushMethods?: string
+  callbackUrl?: string
+  callbackHeaders?: string
+  nodeIds?: string
+}

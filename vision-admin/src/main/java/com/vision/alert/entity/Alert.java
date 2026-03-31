@@ -20,6 +20,11 @@ public class Alert {
     private String id;
 
     /**
+     * 监测任务ID
+     */
+    private String taskId;
+
+    /**
      * 告警级别: critical/warning/info
      */
     private String alertLevel;
