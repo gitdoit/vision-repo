@@ -21,31 +21,50 @@
         </n-popover>
       </div>
       <div class="space-y-1">
+        <!-- 全部 -->
+        <div
+          class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer"
+          :class="selectedGroupId === null ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-bg-active'"
+          @click="selectGroup(null)"
+        >
+          <Icon icon="mdi:view-grid" class="text-base" />
+          <span class="flex-1">全部摄像头</span>
+        </div>
         <div
           v-for="group in groups"
           :key="group.id"
           class="cursor-pointer"
         >
           <div
-            class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors"
+            class="group/item flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors"
             :class="selectedGroupId === group.id ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-bg-active'"
             @click="selectGroup(group.id)"
           >
             <Icon icon="mdi:chevron-down" class="text-sm" />
             <Icon icon="mdi:factory" class="text-base" />
-            <span class="flex-1">{{ group.name }}</span>
+            <span class="flex-1 truncate">{{ group.name }}</span>
             <span class="text-xs opacity-60">{{ group.cameraCount }}</span>
+            <n-dropdown trigger="click" :options="groupMenuOptions" size="small" @select="(key: string) => handleGroupMenuSelect(key, group.id, group.name)" @click.stop>
+              <button class="invisible group-hover/item:visible text-on-surface-variant hover:text-primary ml-1" @click.stop>
+                <Icon icon="mdi:dots-vertical" class="text-sm" />
+              </button>
+            </n-dropdown>
           </div>
           <div v-if="group.children" class="ml-5 space-y-1 mt-1">
             <div
               v-for="child in group.children"
               :key="child.id"
-              class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors cursor-pointer"
+              class="group/child flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors cursor-pointer"
               :class="selectedGroupId === child.id ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-bg-active'"
               @click="selectGroup(child.id)"
             >
-              <span class="flex-1">{{ child.name }}</span>
+              <span class="flex-1 truncate">{{ child.name }}</span>
               <span class="text-xs opacity-60">{{ child.cameraCount }}</span>
+              <n-dropdown trigger="click" :options="groupMenuOptions" size="small" @select="(key: string) => handleGroupMenuSelect(key, child.id, child.name)" @click.stop>
+                <button class="invisible group-hover/child:visible text-on-surface-variant hover:text-primary ml-1" @click.stop>
+                  <Icon icon="mdi:dots-vertical" class="text-sm" />
+                </button>
+              </n-dropdown>
             </div>
           </div>
         </div>
@@ -320,6 +339,39 @@
 
     <!-- Model Test Modal -->
     <ModelTestModal v-model:show="showModelTestModal" :camera="testCamera" />
+
+    <!-- Group Assignment Modal -->
+    <n-modal v-model:show="showGroupModal" preset="card" title="设置所属分组" :style="{ width: '400px' }">
+      <div class="space-y-3">
+        <p class="text-sm text-on-surface-variant">为「{{ groupEditCamera?.name }}」选择所属分组（可多选）：</p>
+        <n-checkbox-group v-model:value="selectedGroupIds">
+          <div class="space-y-2 max-h-60 overflow-y-auto">
+            <template v-for="group in flatGroups" :key="group.id">
+              <n-checkbox :value="group.id" :label="group.label" />
+            </template>
+          </div>
+        </n-checkbox-group>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <n-button size="small" @click="showGroupModal = false">取消</n-button>
+          <n-button size="small" type="primary" :loading="savingGroups" @click="handleSaveGroups">保存</n-button>
+        </div>
+      </template>
+    </n-modal>
+
+    <!-- Edit Group Modal -->
+    <n-modal v-model:show="showEditGroupModal" preset="card" title="编辑分组" :style="{ width: '360px' }">
+      <n-form-item label="分组名称">
+        <n-input v-model:value="editGroupName" placeholder="请输入分组名称" @keydown.enter="handleSaveGroupEdit" />
+      </n-form-item>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <n-button size="small" @click="showEditGroupModal = false">取消</n-button>
+          <n-button size="small" type="primary" :loading="savingGroupEdit" @click="handleSaveGroupEdit">保存</n-button>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -328,7 +380,7 @@ import { ref, computed, onMounted, h } from 'vue'
 import {
   NInput, NButton, NDataTable, NPagination, NDrawer, NDrawerContent,
   NTabs, NTabPane, NForm, NFormItem, NSelect, NTag, NSwitch,
-  NModal, NInputNumber, NPopover, useMessage,
+  NModal, NInputNumber, NPopover, NCheckbox, NCheckboxGroup, NDropdown, useMessage, useDialog,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { Icon } from '@iconify/vue'
@@ -340,6 +392,7 @@ import ModelTestModal from './ModelTestModal.vue'
 
 const cameraStore = useCameraStore()
 const message = useMessage()
+const dialog = useDialog()
 const searchQuery = ref('')
 const showDrawer = ref(false)
 const showPlatformDrawer = ref(false)
@@ -352,6 +405,12 @@ const statusFilter = ref<string | null>(null)
 const showGroupPopover = ref(false)
 const newGroupName = ref('')
 
+// 编辑分组
+const showEditGroupModal = ref(false)
+const editGroupId = ref<string | null>(null)
+const editGroupName = ref('')
+const savingGroupEdit = ref(false)
+
 // 视频预览
 const showPreviewModal = ref(false)
 const previewCamera = ref<Camera | null>(null)
@@ -359,6 +418,12 @@ const previewCamera = ref<Camera | null>(null)
 // 模型测试
 const showModelTestModal = ref(false)
 const testCamera = ref<Camera | null>(null)
+
+// 分组编辑弹窗
+const showGroupModal = ref(false)
+const groupEditCamera = ref<Camera | null>(null)
+const selectedGroupIds = ref<string[]>([])
+const savingGroups = ref(false)
 
 // 添加平台表单
 const platformForm = ref({
@@ -381,20 +446,36 @@ const importing = ref(false)
 
 const groups = computed(() => cameraStore.groups)
 
+/** 将树状分组扁平化（含层级缩进标签）供 checkbox 使用 */
+const flatGroups = computed(() => {
+  const result: { id: string; label: string }[] = []
+  function walk(list: typeof cameraStore.groups, depth: number) {
+    for (const g of list) {
+      result.push({ id: g.id, label: '　'.repeat(depth) + g.name })
+      if (g.children?.length) walk(g.children, depth + 1)
+    }
+  }
+  walk(cameraStore.groups, 0)
+  return result
+})
+
 onMounted(() => {
   cameraStore.fetchCameras()
   cameraStore.fetchGroups()
   cameraStore.fetchPlatforms()
 })
 
-function selectGroup(id: string) {
+function selectGroup(id: string | null) {
   selectedGroupId.value = id
+  cameraStore.page = 1
+  cameraStore.fetchCameras(getSearchParams())
 }
 
 function getSearchParams(): Record<string, unknown> {
   const params: Record<string, unknown> = {}
   if (searchQuery.value) params.keyword = searchQuery.value
   if (statusFilter.value) params.status = statusFilter.value
+  if (selectedGroupId.value) params.groupId = selectedGroupId.value
   return params
 }
 
@@ -427,6 +508,60 @@ async function handleCreateGroup() {
   }
 }
 
+function handleEditGroup(groupId: string, groupName: string) {
+  editGroupId.value = groupId
+  editGroupName.value = groupName
+  showEditGroupModal.value = true
+}
+
+async function handleSaveGroupEdit() {
+  if (!editGroupId.value || !editGroupName.value.trim()) {
+    message.warning('请输入分组名称')
+    return
+  }
+  savingGroupEdit.value = true
+  try {
+    await cameraStore.updateGroup(editGroupId.value, { name: editGroupName.value.trim() })
+    message.success('分组更新成功')
+    showEditGroupModal.value = false
+  } catch (e: unknown) {
+    message.error('更新失败: ' + (e instanceof Error ? e.message : String(e)))
+  } finally {
+    savingGroupEdit.value = false
+  }
+}
+
+function handleDeleteGroup(groupId: string, groupName: string) {
+  dialog.warning({
+    title: '确认删除',
+    content: `确定要删除分组「${groupName}」吗？删除后该分组下的摄像头关联将被移除。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await cameraStore.deleteGroup(groupId)
+        if (selectedGroupId.value === groupId) {
+          selectGroup(null)
+        }
+        message.success('分组删除成功')
+        cameraStore.fetchCameras(getSearchParams())
+      } catch (e: unknown) {
+        message.error('删除失败: ' + (e instanceof Error ? e.message : String(e)))
+      }
+    },
+  })
+}
+
+const groupMenuOptions = [
+  { label: '重命名', key: 'edit' },
+  { label: '删除', key: 'delete' },
+]
+
+function handleGroupMenuSelect(key: string, groupId: string, groupName: string) {
+  if (key === 'edit') handleEditGroup(groupId, groupName)
+  else if (key === 'delete') handleDeleteGroup(groupId, groupName)
+}
+
 function handlePreview(camera: Camera) {
   previewCamera.value = camera
   showPreviewModal.value = true
@@ -435,6 +570,26 @@ function handlePreview(camera: Camera) {
 function handleModelTest(camera: Camera) {
   testCamera.value = camera
   showModelTestModal.value = true
+}
+
+function handleEditGroups(camera: Camera) {
+  groupEditCamera.value = camera
+  selectedGroupIds.value = camera.groups.map(g => g.id)
+  showGroupModal.value = true
+}
+
+async function handleSaveGroups() {
+  if (!groupEditCamera.value) return
+  savingGroups.value = true
+  try {
+    await cameraStore.updateCameraGroups(groupEditCamera.value.id, selectedGroupIds.value)
+    message.success('分组设置成功')
+    showGroupModal.value = false
+  } catch (e: unknown) {
+    message.error('设置失败: ' + (e instanceof Error ? e.message : String(e)))
+  } finally {
+    savingGroups.value = false
+  }
 }
 
 async function handleTestPlatform(id: string) {
@@ -510,6 +665,17 @@ const columns: DataTableColumns<Camera> = [
   { title: '名称', key: 'name', width: 180 },
   { title: '标签', key: 'label', width: 120, ellipsis: { tooltip: true } },
   {
+    title: '所属分组', key: 'groups', width: 160,
+    render: (row) => {
+      if (!row.groups || row.groups.length === 0) {
+        return h('span', { class: 'text-xs text-on-surface-variant' }, '未分组')
+      }
+      return h('div', { class: 'flex flex-wrap gap-1' },
+        row.groups.map(g => h(NTag, { size: 'small', bordered: false, type: 'info' }, { default: () => g.name }))
+      )
+    },
+  },
+  {
     title: '来源', key: 'source', width: 90,
     render: (row) => h(NTag, {
       size: 'small', bordered: false,
@@ -538,7 +704,7 @@ const columns: DataTableColumns<Camera> = [
     render: (row) => h('div', { class: 'flex gap-2' }, [
       h(Icon, { icon: 'mdi:play-circle', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base', title: '实时预览', onClick: () => handlePreview(row) }),
       h(Icon, { icon: 'mdi:brain', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base', title: '模型测试', onClick: () => handleModelTest(row) }),
-      h(Icon, { icon: 'mdi:history', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base', title: '历史记录' }),
+      h(Icon, { icon: 'mdi:folder-plus', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base', title: '设置分组', onClick: () => handleEditGroups(row) }),
       h(Icon, { icon: 'mdi:pencil', class: 'cursor-pointer text-on-surface-variant hover:text-primary text-base', title: '编辑' }),
       h(Icon, { icon: 'mdi:delete', class: 'cursor-pointer text-on-surface-variant hover:text-error text-base', title: '删除' }),
     ]),

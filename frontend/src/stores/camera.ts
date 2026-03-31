@@ -38,6 +38,16 @@ export const useCameraStore = defineStore('camera', () => {
     await fetchGroups()
   }
 
+  async function updateGroup(id: string, data: { name: string; parentId?: string | null }) {
+    await cameraApi.updateCameraGroup(id, data)
+    await fetchGroups()
+  }
+
+  async function deleteGroup(id: string) {
+    await cameraApi.deleteCameraGroup(id)
+    await fetchGroups()
+  }
+
   async function fetchPlatforms() {
     platformLoading.value = true
     try {
@@ -62,10 +72,18 @@ export const useCameraStore = defineStore('camera', () => {
     return res
   }
 
+  async function updateCameraGroups(cameraId: string, groupIds: string[]) {
+    await cameraApi.updateCameraGroups(cameraId, groupIds)
+    await fetchCameras()
+    await fetchGroups()
+  }
+
   return {
     cameras, groups, total, loading, selectedGroupId,
     page, pageSize,
     platforms, platformLoading,
-    fetchCameras, fetchGroups, createGroup, fetchPlatforms, syncPlatform, batchImportFromPlatform,
+    fetchCameras, fetchGroups, createGroup, updateGroup, deleteGroup,
+    fetchPlatforms, syncPlatform, batchImportFromPlatform,
+    updateCameraGroups,
   }
 })

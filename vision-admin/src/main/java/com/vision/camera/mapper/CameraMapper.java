@@ -16,10 +16,9 @@ import java.util.List;
 public interface CameraMapper extends BaseMapper<Camera> {
 
     /**
-     * 根据分组ID查询摄像头列表
+     * 查询属于指定分组ID列表的摄像头ID（定义在 XML 中）
      */
-    @Select("SELECT * FROM camera WHERE group_id = #{groupId} ORDER BY created_at DESC")
-    List<Camera> selectByGroupId(@Param("groupId") String groupId);
+    List<String> selectCameraIdsByGroupIds(@Param("groupIds") List<String> groupIds);
 
     /**
      * 根据状态查询摄像头列表

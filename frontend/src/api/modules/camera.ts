@@ -15,6 +15,10 @@ export function createCameraGroup(data: { name: string; parentId?: string }) {
   return client.post<CameraGroup>('/cameras/groups', data)
 }
 
+export function updateCameraGroup(id: string, data: { name: string; parentId?: string | null }) {
+  return client.put(`/cameras/groups/${encodeURIComponent(id)}`, data)
+}
+
 export function deleteCameraGroup(id: string) {
   return client.delete(`/cameras/groups/${encodeURIComponent(id)}`)
 }
@@ -33,6 +37,11 @@ export function updateCamera(id: string, data: Partial<Camera>) {
 
 export function deleteCamera(id: string) {
   return client.delete(`/cameras/${encodeURIComponent(id)}`)
+}
+
+/** 更新摄像头所属分组 */
+export function updateCameraGroups(cameraId: string, groupIds: string[]) {
+  return client.put(`/cameras/${encodeURIComponent(cameraId)}/groups`, { groupIds })
 }
 
 /** 批量导入摄像头（JSON 列表） */

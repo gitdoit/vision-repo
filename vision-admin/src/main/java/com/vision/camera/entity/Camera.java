@@ -60,11 +60,6 @@ public class Camera {
     private LocalDateTime lastCaptureTime;
 
     /**
-     * 分组ID
-     */
-    private String groupId;
-
-    /**
      * 来源: manual-手动添加, synced-平台同步
      */
     private String source;

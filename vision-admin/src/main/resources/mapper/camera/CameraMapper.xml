@@ -12,7 +12,6 @@
         <result column="ai_enabled" property="aiEnabled" jdbcType="BOOLEAN"/>
         <result column="status" property="status" jdbcType="VARCHAR"/>
         <result column="last_capture_time" property="lastCaptureTime" jdbcType="TIMESTAMP"/>
-        <result column="group_id" property="groupId" jdbcType="VARCHAR"/>
         <result column="source" property="source" jdbcType="VARCHAR"/>
         <result column="platform_id" property="platformId" jdbcType="VARCHAR"/>
         <result column="channel_no" property="channelNo" jdbcType="VARCHAR"/>
@@ -20,21 +19,13 @@
         <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
     </resultMap>
 
-    <!-- 查询摄像头列表（带分组名称） -->
-    <select id="selectCamerasWithGroupName" resultMap="BaseResultMap">
-        SELECT c.*,
-               g.name as group_name
-        FROM camera c
-        LEFT JOIN camera_group g ON c.group_id = g.id
-        <where>
-            <if test="groupId != null and groupId != ''">
-                AND c.group_id = #{groupId}
-            </if>
-            <if test="status != null and status != ''">
-                AND c.status = #{status}
-            </if>
-        </where>
-        ORDER BY c.created_at DESC
+    <!-- 查询属于指定分组ID列表的摄像头ID -->
+    <select id="selectCameraIdsByGroupIds" resultType="java.lang.String">
+        SELECT DISTINCT camera_id FROM camera_group_mapping
+        WHERE group_id IN
+        <foreach collection="groupIds" item="gid" open="(" separator="," close=")">
+            #{gid}
+        </foreach>
     </select>
 
 </mapper>

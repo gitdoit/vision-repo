@@ -7,9 +7,12 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.vision.camera.dto.CameraCreateDTO;
 import com.vision.camera.dto.CameraGroupVO;
 import com.vision.camera.dto.CameraVO;
+import com.vision.camera.dto.GroupSimpleVO;
 import com.vision.camera.entity.Camera;
 import com.vision.camera.entity.CameraGroup;
+import com.vision.camera.entity.CameraGroupMapping;
 import com.vision.camera.mapper.CameraGroupMapper;
+import com.vision.camera.mapper.CameraGroupMappingMapper;
 import com.vision.camera.mapper.CameraMapper;
 import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
@@ -40,6 +43,7 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
 
     private final CameraMapper cameraMapper;
     private final CameraGroupMapper cameraGroupMapper;
+    private final CameraGroupMappingMapper mappingMapper;
 
     /**
      * 分页查询摄像头列表
@@ -48,8 +52,18 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
         Page<Camera> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Camera> wrapper = new LambdaQueryWrapper<>();
 
+        // 按分组过滤：递归收集子分组ID，通过中间表查到关联的摄像头ID
         if (groupId != null && !groupId.isEmpty()) {
-            wrapper.eq(Camera::getGroupId, groupId);
+            List<String> allGroupIds = collectChildGroupIds(groupId);
+            allGroupIds.add(groupId);
+            List<String> cameraIds = cameraMapper.selectCameraIdsByGroupIds(allGroupIds);
+            if (cameraIds.isEmpty()) {
+                // 无匹配摄像头，返回空页
+                Page<CameraVO> emptyPage = new Page<>(page, size, 0);
+                emptyPage.setRecords(new ArrayList<>());
+                return emptyPage;
+            }
+            wrapper.in(Camera::getId, cameraIds);
         }
         if (status != null && !status.isEmpty()) {
             wrapper.eq(Camera::getStatus, status);
@@ -88,14 +102,6 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
      */
     @Transactional(rollbackFor = Exception.class)
     public CameraVO createCamera(CameraCreateDTO dto) {
-        // 验证分组是否存在
-        if (dto.getGroupId() != null) {
-            CameraGroup group = cameraGroupMapper.selectById(dto.getGroupId());
-            if (group == null) {
-                throw new BizException("摄像头分组不存在");
-            }
-        }
-
         Camera camera = new Camera();
         BeanUtils.copyProperties(dto, camera);
         camera.setId(IdUtil.uuid());
@@ -119,14 +125,6 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
             throw new BizException("摄像头不存在");
         }
 
-        // 验证分组是否存在
-        if (dto.getGroupId() != null) {
-            CameraGroup group = cameraGroupMapper.selectById(dto.getGroupId());
-            if (group == null) {
-                throw new BizException("摄像头分组不存在");
-            }
-        }
-
         BeanUtils.copyProperties(dto, camera);
         cameraMapper.updateById(camera);
         log.info("更新摄像头成功: id={}", id);
@@ -143,6 +141,9 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
             throw new BizException("摄像头不存在");
         }
         cameraMapper.deleteById(id);
+        // 删除分组关联（ON DELETE CASCADE 已处理，此处双重保证）
+        mappingMapper.delete(new LambdaQueryWrapper<CameraGroupMapping>()
+                .eq(CameraGroupMapping::getCameraId, id));
         log.info("删除摄像头成功: id={}", id);
     }
 
@@ -151,8 +152,18 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
      */
     public List<CameraGroupVO> getGroupTree() {
         List<CameraGroup> allGroups = cameraGroupMapper.selectList(null);
+        List<CameraGroupMapping> allMappings = mappingMapper.selectList(null);
+
+        // 统计每个分组的直接关联摄像头数
+        Map<String, Long> countMap = allMappings.stream()
+                .collect(Collectors.groupingBy(CameraGroupMapping::getGroupId, Collectors.counting()));
+
         List<CameraGroupVO> voList = allGroups.stream()
-                .map(CameraGroupVO::fromEntity)
+                .map(g -> {
+                    CameraGroupVO vo = CameraGroupVO.fromEntity(g);
+                    vo.setCameraCount(countMap.getOrDefault(g.getId(), 0L).intValue());
+                    return vo;
+                })
                 .collect(Collectors.toList());
 
         return buildGroupTree(voList, null);
@@ -175,14 +186,37 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
     }
 
     /**
+     * 更新分组
+     */
+    public CameraGroupVO updateGroup(String id, CameraGroup update) {
+        CameraGroup group = cameraGroupMapper.selectById(id);
+        if (group == null) {
+            throw new BizException("分组不存在");
+        }
+        if (update.getName() != null && !update.getName().isBlank()) {
+            group.setName(update.getName());
+        }
+        if (update.getParentId() != null) {
+            group.setParentId(update.getParentId());
+        }
+        cameraGroupMapper.updateById(group);
+        log.info("更新分组成功: id={}, name={}", group.getId(), group.getName());
+        return CameraGroupVO.fromEntity(group);
+    }
+
+    /**
      * 删除分组
      */
+    @Transactional(rollbackFor = Exception.class)
     public void deleteGroup(String id) {
         CameraGroup group = cameraGroupMapper.selectById(id);
         if (group == null) {
             throw new BizException("分组不存在");
         }
         cameraGroupMapper.deleteById(id);
+        // 删除分组关联（ON DELETE CASCADE 已处理，此处双重保证）
+        mappingMapper.delete(new LambdaQueryWrapper<CameraGroupMapping>()
+                .eq(CameraGroupMapping::getGroupId, id));
         log.info("删除分组成功: id={}", id);
     }
 
@@ -282,18 +316,75 @@ public class CameraService extends ServiceImpl<CameraMapper, Camera> {
     }
 
     /**
-     * 转换为VO并填充分组名称
+     * 转换为VO并填充所属分组列表
      */
     private CameraVO convertToVO(Camera camera) {
         CameraVO vo = CameraVO.fromEntity(camera);
 
-        if (camera.getGroupId() != null) {
-            CameraGroup group = cameraGroupMapper.selectById(camera.getGroupId());
-            if (group != null) {
-                vo.setGroupName(group.getName());
-            }
+        List<CameraGroupMapping> mappings = mappingMapper.selectList(
+                new LambdaQueryWrapper<CameraGroupMapping>()
+                        .eq(CameraGroupMapping::getCameraId, camera.getId()));
+
+        if (!mappings.isEmpty()) {
+            List<String> groupIds = mappings.stream()
+                    .map(CameraGroupMapping::getGroupId)
+                    .collect(Collectors.toList());
+            List<CameraGroup> groups = cameraGroupMapper.selectBatchIds(groupIds);
+            vo.setGroups(groups.stream()
+                    .map(g -> new GroupSimpleVO(g.getId(), g.getName()))
+                    .collect(Collectors.toList()));
         }
 
         return vo;
+    }
+
+    /**
+     * 更新摄像头所属分组（先删后插）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateCameraGroups(String cameraId, List<String> groupIds) {
+        Camera camera = cameraMapper.selectById(cameraId);
+        if (camera == null) {
+            throw new BizException("摄像头不存在");
+        }
+
+        // 验证分组是否都存在
+        if (groupIds != null && !groupIds.isEmpty()) {
+            List<CameraGroup> existingGroups = cameraGroupMapper.selectBatchIds(groupIds);
+            if (existingGroups.size() != groupIds.size()) {
+                throw new BizException("部分分组不存在");
+            }
+        }
+
+        // 删除旧关联
+        mappingMapper.delete(new LambdaQueryWrapper<CameraGroupMapping>()
+                .eq(CameraGroupMapping::getCameraId, cameraId));
+
+        // 插入新关联
+        if (groupIds != null) {
+            for (String groupId : groupIds) {
+                CameraGroupMapping mapping = new CameraGroupMapping();
+                mapping.setId(IdUtil.uuid());
+                mapping.setCameraId(cameraId);
+                mapping.setGroupId(groupId);
+                mappingMapper.insert(mapping);
+            }
+        }
+
+        log.info("更新摄像头分组: cameraId={}, groupIds={}", cameraId, groupIds);
+    }
+
+    /**
+     * 递归收集指定分组的所有子分组ID
+     */
+    private List<String> collectChildGroupIds(String parentId) {
+        List<String> result = new ArrayList<>();
+        List<CameraGroup> children = cameraGroupMapper.selectList(
+                new LambdaQueryWrapper<CameraGroup>().eq(CameraGroup::getParentId, parentId));
+        for (CameraGroup child : children) {
+            result.add(child.getId());
+            result.addAll(collectChildGroupIds(child.getId()));
+        }
+        return result;
     }
 }

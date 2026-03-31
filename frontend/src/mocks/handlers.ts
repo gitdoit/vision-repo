@@ -21,6 +21,7 @@ export const handlers = [
     const size = parseInt(url.searchParams.get('size') || '20', 10)
     const keyword = url.searchParams.get('keyword') || ''
     const status = url.searchParams.get('status') || ''
+    const groupId = url.searchParams.get('groupId') || ''
     let filtered = cameras
     if (keyword) {
       const kw = keyword.toLowerCase()
@@ -28,6 +29,27 @@ export const handlers = [
     }
     if (status) {
       filtered = filtered.filter(c => c.status === status)
+    }
+    if (groupId) {
+      // 递归收集子分组ID
+      const collectIds = (id: string): string[] => {
+        const ids = [id]
+        for (const g of cameraGroups) {
+          if (g.id === id && g.children) {
+            for (const c of g.children) ids.push(...collectIds(c.id))
+          }
+          if (g.children) {
+            for (const child of g.children) {
+              if (child.id === id && child.children) {
+                for (const gc of child.children) ids.push(...collectIds(gc.id))
+              }
+            }
+          }
+        }
+        return ids
+      }
+      const allGroupIds = collectIds(groupId)
+      filtered = filtered.filter(c => c.groups.some(g => allGroupIds.includes(g.id)))
     }
     const start = (page - 1) * size
     const items = filtered.slice(start, start + size)
@@ -39,6 +61,14 @@ export const handlers = [
     const newGroup = { id: 'g-new-' + Date.now(), name: body.name, icon: 'folder', cameraCount: 0 }
     return HttpResponse.json(newGroup, { status: 201 })
   }),
+  http.put(`${BASE}/cameras/groups/:id`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    const group = cameraGroups.find(g => g.id === params.id)
+      || cameraGroups.flatMap(g => g.children || []).find(g => g.id === params.id)
+    if (!group) return new HttpResponse(null, { status: 404 })
+    if (body.name) group.name = body.name as string
+    return HttpResponse.json(group)
+  }),
   http.delete(`${BASE}/cameras/groups/:id`, () => new HttpResponse(null, { status: 204 })),
   http.get(`${BASE}/cameras/:id`, ({ params }) => {
     const cam = cameras.find(c => c.id === params.id)
@@ -46,6 +76,19 @@ export const handlers = [
   }),
   http.post(`${BASE}/cameras`, () => HttpResponse.json(cameras[0], { status: 201 })),
   http.put(`${BASE}/cameras/:id`, () => HttpResponse.json(cameras[0])),
+  http.put(`${BASE}/cameras/:id/groups`, async ({ params, request }) => {
+    const body = await request.json() as { groupIds: string[] }
+    const cam = cameras.find(c => c.id === params.id)
+    if (!cam) return new HttpResponse(null, { status: 404 })
+    // 根据 groupIds 查找分组名称
+    const allGroups: { id: string; name: string }[] = []
+    for (const g of cameraGroups) {
+      allGroups.push({ id: g.id, name: g.name })
+      if (g.children) for (const c of g.children) allGroups.push({ id: c.id, name: c.name })
+    }
+    cam.groups = body.groupIds.map(gid => allGroups.find(g => g.id === gid) || { id: gid, name: gid })
+    return HttpResponse.json(null, { status: 200 })
+  }),
   http.delete(`${BASE}/cameras/:id`, () => new HttpResponse(null, { status: 204 })),
   http.post(`${BASE}/cameras/import`, () => HttpResponse.json({ success: 3, failed: 0 })),
 

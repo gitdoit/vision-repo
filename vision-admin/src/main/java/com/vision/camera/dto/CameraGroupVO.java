@@ -54,6 +54,11 @@ public class CameraGroupVO {
     private List<CameraGroupVO> children = new ArrayList<>();
 
     /**
+     * 关联摄像头数量
+     */
+    private Integer cameraCount = 0;
+
+    /**
      * 从实体转换
      */
     public static CameraGroupVO fromEntity(CameraGroup entity) {

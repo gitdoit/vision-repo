@@ -107,12 +107,35 @@ public class CameraController {
     }
 
     /**
+     * 更新摄像头分组
+     */
+    @PutMapping("/groups/{id}")
+    public R<CameraGroupVO> updateGroup(@PathVariable String id, @RequestBody CameraGroup group) {
+        log.info("更新摄像头分组: id={}, name={}", id, group.getName());
+        CameraGroupVO vo = cameraService.updateGroup(id, group);
+        return R.ok(vo);
+    }
+
+    /**
      * 删除摄像头分组
      */
     @DeleteMapping("/groups/{id}")
     public R<Void> deleteGroup(@PathVariable String id) {
         log.info("删除摄像头分组: id={}", id);
         cameraService.deleteGroup(id);
+        return R.ok();
+    }
+
+    /**
+     * 更新摄像头所属分组
+     */
+    @PutMapping("/{id}/groups")
+    public R<Void> updateCameraGroups(
+            @PathVariable String id,
+            @RequestBody Map<String, List<String>> body) {
+        List<String> groupIds = body.getOrDefault("groupIds", List.of());
+        log.info("更新摄像头分组: cameraId={}, groupIds={}", id, groupIds);
+        cameraService.updateCameraGroups(id, groupIds);
         return R.ok();
     }
 

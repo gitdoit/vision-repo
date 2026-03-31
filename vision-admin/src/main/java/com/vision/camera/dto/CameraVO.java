@@ -4,6 +4,8 @@ import com.vision.camera.entity.Camera;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 摄像头视图对象
@@ -57,14 +59,9 @@ public class CameraVO {
     private LocalDateTime lastCaptureTime;
 
     /**
-     * 分组ID
+     * 所属分组列表
      */
-    private String groupId;
-
-    /**
-     * 分组名称
-     */
-    private String groupName;
+    private List<GroupSimpleVO> groups = new ArrayList<>();
 
     /**
      * 来源: manual/synced
@@ -110,7 +107,6 @@ public class CameraVO {
         vo.setAiEnabled(entity.getAiEnabled());
         vo.setStatus(entity.getStatus());
         vo.setLastCaptureTime(entity.getLastCaptureTime());
-        vo.setGroupId(entity.getGroupId());
         vo.setSource(entity.getSource());
         vo.setPlatformId(entity.getPlatformId());
         vo.setChannelNo(entity.getChannelNo());

@@ -13,7 +13,7 @@ export interface Camera {
   aiEnabled: boolean
   status: 'online' | 'offline' | 'error'
   lastCaptureTime: string
-  groupId: string
+  groups: GroupSimple[]
   recentTasks: TaskStatus[]
   /** 来源 */
   source: CameraSource
@@ -23,6 +23,11 @@ export interface Camera {
   channelNo?: string
   /** 标签名称（来自视频平台） */
   label?: string
+}
+
+export interface GroupSimple {
+  id: string
+  name: string
 }
 
 export interface TaskStatus {

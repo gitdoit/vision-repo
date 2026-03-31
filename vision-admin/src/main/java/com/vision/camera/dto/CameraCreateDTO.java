@@ -43,11 +43,6 @@ public class CameraCreateDTO {
     private Boolean aiEnabled;
 
     /**
-     * 分组ID
-     */
-    private String groupId;
-
-    /**
      * 视频平台ID
      */
     private String platformId;
