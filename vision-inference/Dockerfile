@@ -25,11 +25,11 @@ COPY . .
 RUN mkdir -p /data/vision/models /data/vision/files
 
 # Expose port
-EXPOSE 5000
+EXPOSE 26331
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5000/health', timeout=5)" || exit 1
+    CMD python -c "import requests; requests.get('http://localhost:26331/health', timeout=5)" || exit 1
 
 # Run with Gunicorn
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]

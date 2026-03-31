@@ -27,5 +27,9 @@ export const useNodeStore = defineStore('node', () => {
     await fetchNodes()
   }
 
-  return { nodes, loading, fetchNodes, updateNodeName, removeNode }
+  async function reloadNode(id: string) {
+    await nodeApi.reloadNode(id)
+  }
+
+  return { nodes, loading, fetchNodes, updateNodeName, removeNode, reloadNode }
 })

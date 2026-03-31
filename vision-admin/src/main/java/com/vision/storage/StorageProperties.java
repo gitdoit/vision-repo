@@ -38,7 +38,7 @@ public class StorageProperties {
         /**
          * 访问基础 URL
          */
-        private String baseUrl = "http://localhost:8080/files";
+        private String baseUrl = "http://localhost:26330/files";
     }
 
     @Data

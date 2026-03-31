@@ -17,7 +17,7 @@ export function unloadModel(id: string) {
   return client.post(`/models/${encodeURIComponent(id)}/unload`)
 }
 
-export function getDeviceInfo(nodeId?: string) {
+export function getDeviceInfo(nodeId: string) {
   return client.get<{ devices: string[]; cuda_available: boolean; gpu_name: string | null }>('/models/device/info', { params: { nodeId } })
 }
 

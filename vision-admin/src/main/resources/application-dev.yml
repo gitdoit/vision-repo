@@ -9,7 +9,7 @@ spring:
 # Vision 开发环境配置
 vision:
   inference:
-    service-url: http://localhost:5000
+    service-url: http://localhost:26331
     auto-start: true
     python-path: D:/repository/conda/envs/vision-inference/python.exe
     working-dir: ../vision-inference
@@ -18,7 +18,7 @@ vision:
     type: local
     local:
       base-path: ./data/files
-      base-url: http://localhost:8080/files
+      base-url: http://localhost:26330/files
 
   capture:
     temp-dir: ./tmp/capture

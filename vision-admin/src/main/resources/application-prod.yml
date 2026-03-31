@@ -12,7 +12,7 @@ spring:
 # Vision 生产环境配置
 vision:
   inference:
-    service-url: http://vision-inference:5000
+    service-url: http://vision-inference:26331
     connect-timeout: 10000
     read-timeout: 60000
 

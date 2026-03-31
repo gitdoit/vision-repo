@@ -16,7 +16,7 @@ class Config:
 
     # Server settings
     HOST = os.getenv('HOST', '0.0.0.0')
-    PORT = int(os.getenv('PORT', '5000'))
+    PORT = int(os.getenv('PORT', '26331'))
 
     # Log level: DEBUG, INFO, WARNING, ERROR
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
@@ -31,7 +31,7 @@ class Config:
 
     # ---- 多节点注册相关 ----
     # 管理服务地址
-    ADMIN_URL = os.getenv('ADMIN_URL', 'http://localhost:8080')
+    ADMIN_URL = os.getenv('ADMIN_URL', 'http://127.0.0.1:26330')
     # 自定义节点名称（空则自动生成）
     NODE_NAME = os.getenv('NODE_NAME', '')
     # 心跳间隔（秒）
@@ -39,7 +39,7 @@ class Config:
     # 本地状态文件路径
     STATE_FILE_PATH = os.getenv('STATE_FILE_PATH', '/data/vision/node_state.json')
     # 对外可达地址（Docker/K8s 场景需要配置，空则自动检测）
-    ADVERTISE_HOST = os.getenv('ADVERTISE_HOST', '')
+    ADVERTISE_HOST = os.getenv('ADVERTISE_HOST', '127.0.0.1')
 
     @classmethod
     def validate(cls):

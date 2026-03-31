@@ -51,7 +51,7 @@ export const useModelStore = defineStore('model', () => {
     await fetchModels()
   }
 
-  async function fetchDeviceInfo(nodeId?: string) {
+  async function fetchDeviceInfo(nodeId: string) {
     const res = await modelApi.getDeviceInfo(nodeId) as unknown as { devices: string[]; cuda_available: boolean; gpu_name: string | null }
     return res
   }

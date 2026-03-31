@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 26330
   servlet:
     context-path: /
 
@@ -46,7 +46,7 @@ mybatis-plus:
 vision:
   # 推理服务配置
   inference:
-    service-url: ${INFERENCE_SERVICE_URL:http://localhost:5000}  # deprecated: 多节点模式下不再使用
+    service-url: ${INFERENCE_SERVICE_URL:http://localhost:26331}  # deprecated: 多节点模式下不再使用
     connect-timeout: 5000
     read-timeout: 30000
     image-transfer-mode: url  # url | base64
@@ -58,7 +58,7 @@ vision:
     type: ${VISION_STORAGE_TYPE:local}
     local:
       base-path: ${LOCAL_STORAGE_PATH:/data/vision/files}
-      base-url: ${LOCAL_STORAGE_URL:http://localhost:8080/files}
+      base-url: ${LOCAL_STORAGE_URL:http://localhost:26330/files}
     minio:
       endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
       access-key: ${MINIO_ACCESS_KEY:minioadmin}

@@ -230,10 +230,12 @@
         <div class="text-sm">
           即将加载模型 <span class="font-semibold text-primary">{{ loadTarget.name }}</span>
         </div>
-        <n-spin :show="loadingDeviceInfo" description="正在检测设备...">
+        <div class="space-y-3">
+          <div class="text-sm font-medium">目标节点</div>
+          <n-select v-model:value="loadNodeId" :options="nodeOptions" size="small" placeholder="请选择推理节点" />
+        </div>
+        <n-spin v-if="loadNodeId" :show="loadingDeviceInfo" description="正在检测设备..." class="mt-3">
           <div class="space-y-3">
-            <div class="text-sm font-medium">目标节点</div>
-            <n-select v-model:value="loadNodeId" :options="nodeOptions" size="small" placeholder="选择推理节点" />
             <div class="text-sm font-medium">选择运行设备</div>
             <n-radio-group v-model:value="loadDevice">
               <div class="space-y-2">
@@ -256,11 +258,12 @@
             </n-radio-group>
           </div>
         </n-spin>
+        <div v-if="!loadNodeId" class="mt-3 text-xs text-on-surface-variant">请先选择目标节点以检测可用设备</div>
       </div>
       <template #action>
         <div class="flex justify-end gap-2">
           <n-button size="small" @click="showLoadModal = false">取消</n-button>
-          <n-button type="primary" size="small" :loading="loadingModel" :disabled="loadingDeviceInfo" @click="confirmLoad">
+          <n-button type="primary" size="small" :loading="loadingModel" :disabled="!loadNodeId || loadingDeviceInfo" @click="confirmLoad">
             加载
           </n-button>
         </div>
@@ -270,7 +273,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, watch } from 'vue'
 import {
   NInput, NButton, NTag, NSlider, NFormItem, NInputNumber, NSelect,
   NModal, NForm, NUpload, useMessage, useDialog, NRadioGroup, NRadio, NSpin,
@@ -441,24 +444,12 @@ const resolutionOptions = [
 async function handleLoad(model: Model) {
   loadTarget.value = model
   loadDevice.value = 'cpu'
-  loadNodeId.value = '__auto__'
-  loadingDeviceInfo.value = true
+  loadNodeId.value = null
+  availableDevices.value = []
+  gpuName.value = null
+  loadingDeviceInfo.value = false
   showLoadModal.value = true
-  // Fetch nodes and device info in parallel
   nodeStore.fetchNodes()
-  try {
-    const info = await modelStore.fetchDeviceInfo()
-    availableDevices.value = info.devices ?? ['cpu']
-    gpuName.value = info.gpu_name ?? null
-    if (info.cuda_available) {
-      loadDevice.value = 'cuda'
-    }
-  } catch {
-    availableDevices.value = ['cpu']
-    gpuName.value = null
-  } finally {
-    loadingDeviceInfo.value = false
-  }
 }
 
 // Load model dialog state
@@ -471,19 +462,42 @@ const gpuName = ref<string | null>(null)
 const loadingDeviceInfo = ref(false)
 const loadingModel = ref(false)
 
-const nodeOptions = computed(() => [
-  { label: '自动分配', value: '__auto__' },
-  ...nodeStore.nodes
+watch(loadNodeId, async (nodeId) => {
+  if (!nodeId) {
+    availableDevices.value = []
+    gpuName.value = null
+    loadDevice.value = 'cpu'
+    return
+  }
+  loadingDeviceInfo.value = true
+  loadDevice.value = 'cpu'
+  try {
+    const info = await modelStore.fetchDeviceInfo(nodeId)
+    availableDevices.value = info.devices ?? ['cpu']
+    gpuName.value = info.gpu_name ?? null
+    if (info.cuda_available) {
+      loadDevice.value = 'cuda'
+    }
+  } catch {
+    availableDevices.value = ['cpu']
+    gpuName.value = null
+  } finally {
+    loadingDeviceInfo.value = false
+  }
+})
+
+const nodeOptions = computed(() =>
+  nodeStore.nodes
     .filter(n => n.status === 'online')
-    .map(n => ({ label: `${n.nodeName} (${n.host}:${n.port})`, value: n.id })),
-])
+    .map(n => ({ label: `${n.nodeName} (${n.host}:${n.port})`, value: n.id }))
+)
 
 async function confirmLoad() {
   if (!loadTarget.value) return
   loadingModel.value = true
   try {
     const deviceName = loadDevice.value === 'cuda' ? gpuName.value ?? undefined : undefined
-    const nodeId = loadNodeId.value === '__auto__' ? undefined : loadNodeId.value ?? undefined
+    const nodeId = loadNodeId.value ?? undefined
     await modelStore.loadModel(loadTarget.value.id, loadDevice.value, deviceName, nodeId)
     message.success(`模型 ${loadTarget.value.name} 已加载到 ${loadDevice.value.toUpperCase()}`)
     showLoadModal.value = false

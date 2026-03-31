@@ -34,7 +34,7 @@ public class InferenceProcessRunner implements ApplicationRunner {
     @Value("${vision.inference.working-dir:../vision-inference}")
     private String workingDir;
 
-    @Value("${vision.inference.service-url:http://localhost:5000}")
+    @Value("${vision.inference.service-url:http://localhost:26331}")
     private String serviceUrl;
 
     private Process process;

@@ -30,7 +30,7 @@ public class VisionApplication {
 
                 ========================================
                    Vision Analysis Platform Started
-                   API Doc: http://localhost:8080/swagger-ui.html
+                   API Doc: http://localhost:26330/swagger-ui.html
                 ========================================
                 """);
     }

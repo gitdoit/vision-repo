@@ -68,14 +68,14 @@ services:
       - file_data:/data/vision/files
       - model_data:/data/vision/models
     ports:
-      - "8080:8080"
+      - "26330:26330"
     depends_on:
       postgres:
         condition: service_healthy
       vision-inference:
         condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:26330/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -91,7 +91,8 @@ services:
     environment:
       MODEL_BASE_PATH: /data/vision/models
       DEVICE: ${INFERENCE_DEVICE:-cpu}
-      ADMIN_URL: http://vision-admin:8080
+      PORT: 26331
+      ADMIN_URL: http://vision-admin:26330
       NODE_NAME: ${NODE_NAME:-}
       ADVERTISE_HOST: ${ADVERTISE_HOST:-}
       STATE_FILE_PATH: /data/vision/node_state.json
@@ -101,9 +102,9 @@ services:
       - file_data:/data/vision/files
       - node_state:/data/vision
     ports:
-      - "5000:5000"
+      - "26331:26331"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:26331/health"]
       interval: 30s
       timeout: 10s
       retries: 3

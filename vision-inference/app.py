@@ -452,6 +452,32 @@ def stream_tasks():
     return jsonify({'tasks': stream_manager.list_tasks()})
 
 
+@app.route('/admin/reload', methods=['POST'])
+def admin_reload():
+    """
+    Reload the inference service.
+    Under Gunicorn: sends SIGHUP to master process to gracefully restart workers.
+    Dev mode (python app.py): schedules process restart.
+    """
+    import signal
+
+    is_gunicorn = 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '')
+
+    if is_gunicorn:
+        master_pid = os.getppid()
+        logger.info('Reload requested: sending SIGHUP to gunicorn master (PID %d)', master_pid)
+        os.kill(master_pid, signal.SIGHUP)
+        return jsonify({'success': True, 'mode': 'gunicorn', 'message': 'SIGHUP sent to master'})
+    else:
+        logger.info('Reload requested: scheduling process restart')
+        import threading
+        import sys
+        def _restart():
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        threading.Timer(0.5, _restart).start()
+        return jsonify({'success': True, 'mode': 'dev', 'message': 'Restarting in 0.5s'})
+
+
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 errors."""

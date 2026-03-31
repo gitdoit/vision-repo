@@ -16,3 +16,7 @@ export function updateNodeName(id: string, nodeName: string) {
 export function removeNode(id: string) {
   return client.delete(`/nodes/${encodeURIComponent(id)}`)
 }
+
+export function reloadNode(id: string) {
+  return client.post(`/nodes/${encodeURIComponent(id)}/reload`)
+}

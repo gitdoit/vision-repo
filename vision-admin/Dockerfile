@@ -42,11 +42,11 @@ RUN chown vision:vision app.jar
 USER vision
 
 # Expose port
-EXPOSE 8080
+EXPOSE 26330
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
+    CMD curl -f http://localhost:26330/actuator/health || exit 1
 
 # Run application
 ENTRYPOINT ["java", \

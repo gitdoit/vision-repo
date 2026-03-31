@@ -1,6 +1,7 @@
 package com.vision.node.controller;
 
 import com.vision.common.response.R;
+import com.vision.model.service.InferenceClient;
 import com.vision.node.dto.NodeHeartbeatDTO;
 import com.vision.node.dto.NodeRegisterDTO;
 import com.vision.node.dto.NodeVO;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Map;
 
 /**
@@ -23,6 +25,7 @@ import java.util.Map;
 public class NodeController {
 
     private final NodeService nodeService;
+    private final InferenceClient inferenceClient;
 
     /**
      * 节点注册（推理服务调用）
@@ -77,5 +80,15 @@ public class NodeController {
         log.info("移除节点: id={}", id);
         nodeService.removeNode(id);
         return R.ok();
+    }
+
+    /**
+     * 重载推理节点（使 Python 代码变更生效）
+     */
+    @PostMapping("/{id}/reload")
+    public R<Map<String, Object>> reloadNode(@PathVariable String id) {
+        log.info("重载推理节点: id={}", id);
+        Map<String, Object> result = inferenceClient.reloadNode(id);
+        return R.ok(result);
     }
 }

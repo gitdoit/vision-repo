@@ -31,7 +31,7 @@ public class OpenApiConfig {
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
                 .servers(List.of(
-                        new Server().url("http://localhost:8080").description("本地开发环境"),
+                        new Server().url("http://localhost:26330").description("本地开发环境"),
                         new Server().url("/api/v1").description("生产环境")));
     }
 }

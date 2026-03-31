@@ -250,6 +250,27 @@ public class InferenceClient {
     }
 
     /**
+     * 重载推理节点（使新代码生效）
+     */
+    public Map<String, Object> reloadNode(String nodeId) {
+        String baseUrl = nodeRouter.getNodeUrl(nodeId);
+        String url = baseUrl + "/admin/reload";
+
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, null, Map.class);
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return response.getBody();
+            }
+            throw new BizException("节点重载失败");
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("节点重载失败: nodeId={}", nodeId, e);
+            throw new BizException("节点重载失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 健康检查
      */
     public boolean healthCheck(String nodeId) {

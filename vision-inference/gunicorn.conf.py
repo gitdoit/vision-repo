@@ -2,7 +2,7 @@
 
 import os
 
-bind = f"{os.getenv('HOST', '0.0.0.0')}:{os.getenv('PORT', '5000')}"
+bind = f"{os.getenv('HOST', '0.0.0.0')}:{os.getenv('PORT', '26331')}"
 workers = int(os.getenv('GUNICORN_WORKERS', '1'))
 threads = int(os.getenv('GUNICORN_THREADS', '4'))
 timeout = int(os.getenv('GUNICORN_TIMEOUT', '120'))

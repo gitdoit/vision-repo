@@ -86,11 +86,18 @@ export const handlers = [
   http.post(`${BASE}/models/:id/unload`, () => HttpResponse.json({ success: true })),
   http.put(`${BASE}/models/:id/config`, () => HttpResponse.json(models[0])),
   http.delete(`${BASE}/models/:id`, () => new HttpResponse(null, { status: 204 })),
-  http.get(`${BASE}/models/device/info`, () => HttpResponse.json({
-    devices: ['cpu', 'cuda'],
-    cuda_available: true,
-    gpu_name: 'NVIDIA GeForce RTX 3090',
-  })),
+  http.get(`${BASE}/models/device/info`, ({ request }) => {
+    const url = new URL(request.url)
+    const nodeId = url.searchParams.get('nodeId')
+    if (!nodeId) {
+      return HttpResponse.json({ code: 400, message: 'nodeId is required' }, { status: 400 })
+    }
+    return HttpResponse.json({
+      devices: ['cpu', 'cuda'],
+      cuda_available: true,
+      gpu_name: 'NVIDIA GeForce RTX 3090',
+    })
+  }),
 
   // Nodes
   http.get(`${BASE}/nodes`, () => HttpResponse.json(inferenceNodes)),
@@ -100,6 +107,7 @@ export const handlers = [
   }),
   http.put(`${BASE}/nodes/:id/name`, () => HttpResponse.json({ success: true })),
   http.delete(`${BASE}/nodes/:id`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE}/nodes/:id/reload`, () => HttpResponse.json({ success: true, mode: 'dev', message: 'Restarting' })),
 
   // Rules
   http.get(`${BASE}/rules`, () => HttpResponse.json(rules)),

@@ -82,6 +82,10 @@
 
           <!-- Actions -->
           <div class="mt-3 flex gap-2">
+            <n-button size="tiny" quaternary type="info" @click.stop="handleReload(node)">
+              <template #icon><Icon icon="mdi:restart" /></template>
+              重载
+            </n-button>
             <n-button size="tiny" quaternary @click.stop="handleRename(node)">
               <template #icon><Icon icon="mdi:pencil" /></template>
               重命名
@@ -178,6 +182,15 @@ function handleRename(node: InferenceNode) {
     nodeStore.updateNodeName(node.id, newName)
       .then(() => message.success('已重命名'))
       .catch((e: any) => message.error(e?.message || '重命名失败'))
+  }
+}
+
+async function handleReload(node: InferenceNode) {
+  try {
+    await nodeStore.reloadNode(node.id)
+    message.success('重载指令已发送，节点将在几秒后重启')
+  } catch (e: any) {
+    message.error(e?.message || '重载失败')
   }
 }
 
