@@ -161,24 +161,30 @@ export interface RuleAction {
 export interface InferenceRecord {
   id: string
   eventId: string
-  timestamp: string
   cameraId: string
+  cameraName?: string
   businessType: string
-  avgConfidence: number
+  avgConfidence: number | null
   alertStatus: 'normal' | 'warning' | 'alert'
   detections: Detection[]
   thumbnailUrl: string
   originalImageUrl: string
   annotatedImageUrl: string
   rawJson: string
-  relatedAlerts: RelatedAlert[]
+  modelName?: string
+  inferenceTimeMs?: number
+  createdAt: string
+  relatedAlerts?: RelatedAlert[]
 }
 
 export interface Detection {
+  id?: string
+  recordId?: string
   label: string
   confidence: number
-  bbox: number[]
+  bbox: string | number[]
   count: number
+  attributes?: string
 }
 
 export interface RelatedAlert {

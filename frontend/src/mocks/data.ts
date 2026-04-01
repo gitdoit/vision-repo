@@ -196,7 +196,7 @@ export const rules: Rule[] = [
 
 export const inferenceRecords: InferenceRecord[] = [
   {
-    id: 'inf1', eventId: 'EV-9021', timestamp: '2023-11-24 14:22:05',
+    id: 'inf1', eventId: 'EV-9021', createdAt: '2023-11-24T14:22:05',
     cameraId: 'CAM_04_NORTH_02', businessType: '工业安全: 油液泄漏监测',
     avgConfidence: 0.92, alertStatus: 'normal',
     detections: [
@@ -220,7 +220,7 @@ export const inferenceRecords: InferenceRecord[] = [
     ],
   },
   {
-    id: 'inf2', eventId: 'EV-9022', timestamp: '2023-11-24 14:18:33',
+    id: 'inf2', eventId: 'EV-9022', createdAt: '2023-11-24T14:18:33',
     cameraId: 'CAM_12_GATE_01', businessType: '安全合规: 安全帽佩戴检测',
     avgConfidence: 0.88, alertStatus: 'alert',
     detections: [
@@ -233,10 +233,9 @@ export const inferenceRecords: InferenceRecord[] = [
       event_id: 'EV-9022', timestamp: '2023-11-24T14:18:33.000Z',
       detections: [{ label: 'helmet', confidence: 0.88, bbox: [100, 200, 150, 250] }],
     }, null, 2),
-    relatedAlerts: [],
   },
   {
-    id: 'inf3', eventId: 'EV-9023', timestamp: '2023-11-24 14:05:12',
+    id: 'inf3', eventId: 'EV-9023', createdAt: '2023-11-24T14:05:12',
     cameraId: 'CAM_01_WEST_05', businessType: '消防监测: 明火烟雾检测',
     avgConfidence: 0.96, alertStatus: 'normal',
     detections: [
@@ -249,10 +248,9 @@ export const inferenceRecords: InferenceRecord[] = [
       event_id: 'EV-9023', timestamp: '2023-11-24T14:05:12.000Z',
       detections: [{ label: 'smoke', confidence: 0.96, bbox: [200, 100, 400, 300] }],
     }, null, 2),
-    relatedAlerts: [],
   },
   {
-    id: 'inf4', eventId: 'EV-9024', timestamp: '2023-11-24 13:55:00',
+    id: 'inf4', eventId: 'EV-9024', createdAt: '2023-11-24T13:55:00',
     cameraId: 'CAM_33_LAB_02', businessType: '进入管控: 区域准入识别',
     avgConfidence: 0.91, alertStatus: 'normal',
     detections: [
@@ -265,7 +263,6 @@ export const inferenceRecords: InferenceRecord[] = [
       event_id: 'EV-9024', timestamp: '2023-11-24T13:55:00.000Z',
       detections: [{ label: 'person', confidence: 0.91, bbox: [300, 150, 400, 350] }],
     }, null, 2),
-    relatedAlerts: [],
   },
 ]
 

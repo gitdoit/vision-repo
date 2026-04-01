@@ -13,8 +13,10 @@ export const useInferenceStore = defineStore('inference', () => {
     loading.value = true
     try {
       const res = await inferenceApi.getInferenceRecords(params) as unknown as { items: InferenceRecord[]; total: number }
-      records.value = res.items
-      total.value = res.total
+      records.value = res.items ?? []
+      total.value = res.total ?? 0
+    } catch (e) {
+      console.error('Failed to fetch inference records:', e)
     } finally {
       loading.value = false
     }
