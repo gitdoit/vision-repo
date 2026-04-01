@@ -33,9 +33,6 @@
             </div>
           </div>
           <div class="flex gap-1">
-            <n-button size="tiny" quaternary type="primary" @click="handleLoad(model)" title="加载到节点">
-              <template #icon><Icon icon="mdi:play-arrow" /></template>
-            </n-button>
             <n-button size="tiny" quaternary type="error" @click="handleDelete(model)" title="删除模型">
               <template #icon><Icon icon="mdi:delete" /></template>
             </n-button>
@@ -105,6 +102,11 @@
                 </n-button>
               </div>
             </div>
+
+            <n-button size="small" dashed type="primary" class="mt-2 w-full" @click="handleLoad(model)">
+              <template #icon><Icon icon="mdi:plus" /></template>
+              新增节点部署
+            </n-button>
           </div>
           
           <div class="mt-auto pt-2">
@@ -192,7 +194,7 @@
     </n-modal>
 
     <!-- Load to Node Modal -->
-    <n-modal v-model:show="showLoadModal" preset="card" title="加载到节点" class="w-[500px]">
+    <n-modal v-model:show="showLoadModal" preset="card" title="加载到节点" class="w-[400px]">
       <div v-if="loadTarget" class="space-y-4">
         <div class="text-sm">
           将模型 <span class="font-semibold text-primary">{{ loadTarget.name }}</span> 加载到推理节点
