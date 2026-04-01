@@ -14,214 +14,141 @@
       </div>
     </div>
 
-    <div class="flex gap-4">
-      <!-- Model Cards -->
-      <div class="w-80 shrink-0 space-y-3">
-        <div
-          v-for="model in filteredModels"
-          :key="model.id"
-          class="cursor-pointer rounded-xl p-5 transition-colors"
-          :class="selectedId === model.id ? 'bg-bg-active ring-1 ring-primary/30' : 'bg-bg-card hover:bg-bg-active'"
-          @click="selectModelCard(model)"
-        >
-          <!-- Name -->
-          <div class="flex items-center gap-2">
-            <Icon :icon="getModelIcon(model.businessTag)" class="text-lg text-primary" />
-            <h4 class="text-sm font-semibold">{{ model.name }}</h4>
+    <!-- Models Grid -->
+    <div v-if="filteredModels.length" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div
+        v-for="model in filteredModels"
+        :key="model.id"
+        class="flex flex-col rounded-xl bg-bg-card p-6 shadow-sm border border-transparent hover:border-primary/20 transition-all"
+      >
+        <!-- Card Header -->
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Icon :icon="getModelIcon(model.businessTag ?? '')" class="text-2xl" />
+            </div>
+            <div>
+              <h3 class="text-base font-semibold text-on-surface leading-tight">{{ model.name }}</h3>
+              <p class="text-xs text-on-surface-variant mt-0.5">{{ model.version }} · {{ model.author || '系统' }}</p>
+            </div>
           </div>
-          <!-- Tags row -->
-          <div class="mt-2 flex items-center gap-2 flex-wrap">
-            <n-tag size="tiny" :bordered="false" type="info">{{ model.businessTag }} {{ model.version }}</n-tag>
-            <n-tag size="tiny" :bordered="false" :type="getTaskTypeTagType(model.taskType)">
-              {{ getTaskTypeLabel(model.taskType) }}
-            </n-tag>
-            <n-tag size="tiny" :bordered="false" :type="parsedStatusType(model.parsedStatus)">
-              {{ parsedStatusLabel(model.parsedStatus) }}
-            </n-tag>
-          </div>
-          <!-- Deployment summary -->
-          <div class="mt-2">
-            <n-tag v-if="loadedDeployments(model).length > 0" size="tiny" :bordered="false" type="success">
-              已部署 {{ loadedDeployments(model).length }} 节点
-            </n-tag>
-            <n-tag v-else size="tiny" :bordered="false" type="default">未部署</n-tag>
-          </div>
-          <!-- Deployment node chips -->
-          <div v-if="loadedDeployments(model).length > 0" class="mt-2 flex flex-wrap gap-1">
-            <n-tag
-              v-for="dep in loadedDeployments(model)"
-              :key="dep.id"
-              size="tiny"
-              :bordered="false"
-              :type="dep.device === 'cuda' ? 'warning' : 'default'"
-            >
-              <template #icon>
-                <Icon :icon="dep.device === 'cuda' ? 'mdi:memory' : 'mdi:developer-board'" />
-              </template>
-              {{ dep.nodeName }}
-            </n-tag>
-          </div>
-          <!-- Actions -->
-          <div class="mt-3 flex gap-2 flex-wrap">
-            <n-button size="tiny" quaternary type="primary" @click.stop="handleLoad(model)">
+          <div class="flex gap-1">
+            <n-button size="tiny" quaternary type="primary" @click="handleLoad(model)" title="加载到节点">
               <template #icon><Icon icon="mdi:play-arrow" /></template>
-              加载到节点
             </n-button>
-            <n-button
-              v-if="loadedDeployments(model).length > 0"
-              size="tiny" quaternary type="warning"
-              @click.stop="handleUnloadAll(model)"
-            >
-              <template #icon><Icon icon="mdi:eject" /></template>
-              全部卸载
-            </n-button>
-            <n-button size="tiny" quaternary @click.stop="selectModelCard(model)">
-              <template #icon><Icon icon="mdi:tune" /></template>
-              参数
-            </n-button>
-            <n-button size="tiny" quaternary type="error" @click.stop="handleDelete(model)">
+            <n-button size="tiny" quaternary type="error" @click="handleDelete(model)" title="删除模型">
               <template #icon><Icon icon="mdi:delete" /></template>
             </n-button>
           </div>
         </div>
-      </div>
 
-      <!-- Detail Panel -->
-      <div v-if="selectedModel" class="flex-1 rounded-xl bg-bg-card p-6 overflow-y-auto max-h-[calc(100vh-160px)]">
-        <div class="mb-6 flex items-center justify-between">
-          <h3 class="text-lg font-semibold">模型配置详情</h3>
-          <button class="text-on-surface-variant hover:text-on-surface" @click="selectedId = null">
-            <Icon icon="mdi:close" class="text-xl" />
-          </button>
+        <!-- Tags -->
+        <div class="flex flex-wrap gap-2 mb-5">
+          <n-tag size="small" :bordered="false" type="info" v-if="model.businessTag">{{ model.businessTag }}</n-tag>
+          <n-tag size="small" :bordered="false" :type="getTaskTypeTagType(model.taskType)">
+            {{ getTaskTypeLabel(model.taskType) }}
+          </n-tag>
+          <n-tag size="small" :bordered="false" :type="parsedStatusType(model.parsedStatus)">
+            {{ parsedStatusLabel(model.parsedStatus) }}
+          </n-tag>
         </div>
 
-        <!-- 基本信息 -->
-        <section class="mb-6">
-          <h4 class="mb-3 text-sm font-semibold text-on-surface-variant">基本信息</h4>
-          <div class="grid grid-cols-2 gap-3">
-            <InfoRow label="模型路径" :value="selectedModel.modelPath ?? ''" />
-            <InfoRow label="创建时间" :value="selectedModel.createdAt ?? ''" />
-            <InfoRow label="作者" :value="selectedModel.author ?? ''" />
-            <div class="rounded-lg bg-bg-floor px-4 py-2">
-              <div class="text-xs text-on-surface-variant">解析状态</div>
-              <div class="mt-1">
-                <n-tag size="small" :bordered="false" :type="parsedStatusType(selectedModel.parsedStatus)">
-                  {{ parsedStatusLabel(selectedModel.parsedStatus) }}
-                </n-tag>
-              </div>
-            </div>
-            <div class="rounded-lg bg-bg-floor px-4 py-2">
-              <div class="text-xs text-on-surface-variant">分类数量</div>
-              <div class="mt-0.5 text-sm font-semibold text-on-surface">{{ selectedModel.numClasses ?? 0 }} 类</div>
-            </div>
-          </div>
-        </section>
+        <n-divider class="!my-0" />
 
-        <!-- 模型分类名称 -->
-        <section v-if="selectedModel.classNames?.length" class="mb-6">
-          <h4 class="mb-3 text-sm font-semibold text-on-surface-variant">模型分类名称</h4>
-          <div class="flex flex-wrap gap-2 rounded-lg bg-bg-floor p-3">
-            <n-tag
-              v-for="cls in selectedModel.classNames"
-              :key="cls"
-              size="small"
-              :bordered="false"
-              type="info"
-            >{{ cls }}</n-tag>
+        <!-- Card Body Splits -->
+        <div class="flex flex-col gap-4 mt-4 text-sm flex-1">
+          <!-- Basic Info -->
+          <div class="bg-bg-floor rounded-lg p-3 space-y-2">
+            <div class="flex justify-between">
+              <span class="text-on-surface-variant text-xs">模型路径</span>
+              <span class="font-mono text-xs truncate max-w-[180px]" :title="model.modelPath">{{ model.modelPath }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-on-surface-variant text-xs">分类数量</span>
+              <span class="text-xs font-semibold">{{ model.numClasses ?? 0 }} 类</span>
+            </div>
+             <div class="flex justify-between">
+              <span class="text-on-surface-variant text-xs">创建时间</span>
+              <span class="text-xs">{{ model.createdAt }}</span>
+            </div>
           </div>
-        </section>
-        <section v-else-if="selectedModel.parsedStatus === 'pending'" class="mb-6">
-          <h4 class="mb-3 text-sm font-semibold text-on-surface-variant">模型分类名称</h4>
-          <div class="rounded-lg bg-bg-floor p-3 text-xs text-on-surface-variant">
-            解析中，等待推理节点上线后自动解析...
-          </div>
-        </section>
 
-        <!-- 部署节点 -->
-        <section class="mb-6">
-          <div class="mb-3 flex items-center justify-between">
-            <h4 class="text-sm font-semibold text-on-surface-variant">部署节点</h4>
-            <n-button
-              v-if="selectedModel.deployments?.length"
-              size="tiny" type="warning" quaternary
-              @click="handleUnloadAll(selectedModel)"
-            >
-              <template #icon><Icon icon="mdi:eject-outline" /></template>
-              全部卸载
-            </n-button>
-          </div>
-          <div v-if="!selectedModel.deployments?.length" class="rounded-lg bg-bg-floor p-3 text-xs text-on-surface-variant">
-            该模型尚未部署到任何节点
-          </div>
-          <div v-else class="space-y-2">
-            <div
-              v-for="dep in selectedModel.deployments"
-              :key="dep.id"
-              class="flex items-center gap-3 rounded-lg bg-bg-floor px-4 py-2"
-            >
-              <Icon icon="mdi:server" class="text-sm text-on-surface-variant shrink-0" />
-              <span class="flex-1 text-sm">{{ dep.nodeName }}</span>
-              <n-tag size="tiny" :bordered="false" :type="dep.device === 'cuda' ? 'warning' : 'default'">
-                <template #icon>
-                  <Icon :icon="dep.device === 'cuda' ? 'mdi:memory' : 'mdi:developer-board'" />
-                </template>
-                {{ dep.device === 'cuda' ? (dep.deviceName ?? 'GPU') : 'CPU' }}
-              </n-tag>
-              <n-tag size="tiny" :bordered="false" :type="deployStatusType(dep.status)">
-                {{ deployStatusLabel(dep.status) }}
-              </n-tag>
-              <n-button size="tiny" quaternary type="warning" @click="handleUnloadNode(selectedModel, dep.nodeId)">
+          <!-- Deployments -->
+          <div class="flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-on-surface-variant">部署节点</span>
+              <n-button
+                v-if="loadedDeployments(model).length > 0"
+                size="tiny" quaternary type="warning"
+                @click="handleUnloadAll(model)"
+              >
                 <template #icon><Icon icon="mdi:eject" /></template>
-                卸载
+                全部卸载
               </n-button>
             </div>
-          </div>
-        </section>
-
-        <!-- 版本历史 -->
-        <section class="mb-6">
-          <h4 class="mb-3 text-sm font-semibold text-on-surface-variant">版本历史</h4>
-          <div class="space-y-2">
-            <div
-              v-for="v in selectedModel.versionHistory"
-              :key="v.version"
-              class="flex items-center gap-3 rounded-lg bg-bg-floor px-4 py-2"
-            >
-              <n-tag size="tiny" type="primary" :bordered="false">{{ v.version }}</n-tag>
-              <span class="text-sm text-on-surface-variant">{{ v.description }}</span>
+            
+            <div v-if="loadedDeployments(model).length === 0" class="text-xs text-on-surface-variant italic py-1">
+              未部署
+            </div>
+            <div v-else class="space-y-1.5 flex-1 max-h-32 overflow-y-auto pr-1">
+               <div
+                v-for="dep in loadedDeployments(model)"
+                :key="dep.id"
+                class="flex items-center gap-2 rounded bg-bg-floor px-2 py-1.5"
+              >
+                <Icon :icon="dep.device === 'cuda' ? 'mdi:memory' : 'mdi:developer-board'" 
+                      class="text-sm shrink-0" 
+                      :class="dep.device === 'cuda' ? 'text-warning' : 'text-on-surface-variant'" />
+                <span class="text-xs truncate flex-1" :title="dep.nodeName">{{ dep.nodeName }}</span>
+                 <n-button size="tiny" quaternary type="warning" @click="handleUnloadNode(model, dep.nodeId)" class="!p-0" title="卸载">
+                  <template #icon><Icon icon="mdi:close" /></template>
+                </n-button>
+              </div>
             </div>
           </div>
-        </section>
-
-        <!-- 动态参数 -->
-        <section class="mb-6">
-          <h4 class="mb-3 text-sm font-semibold text-on-surface-variant">动态参数</h4>
-          <div class="space-y-4">
-            <div>
-              <label class="text-xs text-on-surface-variant">置信度阈值</label>
-              <n-slider v-model:value="editThreshold" :min="0" :max="1" :step="0.05" :format-tooltip="(v: number) => v.toFixed(2)" />
-            </div>
-            <n-form-item label="最大并发数">
-              <n-input-number v-model:value="editConcurrency" :min="1" :max="16" size="small" />
-            </n-form-item>
-            <n-form-item label="推理分辨率">
-              <n-select :options="resolutionOptions" v-model:value="editResolution" size="small" />
-            </n-form-item>
+          
+          <div class="mt-auto pt-2">
+             <div class="flex items-center justify-between mb-3 text-xs font-semibold text-on-surface-variant">
+               动态参数
+               <div class="flex gap-2" v-if="hasConfigChanges(model.id)">
+                  <n-button size="tiny" quaternary @click="handleDiscard(model.id)">重置</n-button>
+                  <n-button size="tiny" type="primary" :loading="saving === model.id" @click="handleSave(model)">保存</n-button>
+               </div>
+             </div>
+             <div class="space-y-3">
+               <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="text-on-surface-variant">置信度阈值</span>
+                    <span class="font-mono">{{ getDraftConfig(model).confidenceThreshold.toFixed(2) }}</span>
+                  </div>
+                  <n-slider 
+                    v-model:value="draftConfigs[model.id].confidenceThreshold" 
+                    :min="0" :max="1" :step="0.05" 
+                    :format-tooltip="(v: number) => v.toFixed(2)" 
+                  />
+               </div>
+               <div class="flex gap-3">
+                   <div class="flex-1">
+                      <div class="text-xs text-on-surface-variant mb-1">最大并发</div>
+                      <n-input-number v-model:value="draftConfigs[model.id].maxConcurrency" :min="1" :max="16" size="small" class="w-full" />
+                   </div>
+                   <div class="flex-1">
+                      <div class="text-xs text-on-surface-variant mb-1">推理分辨率</div>
+                      <n-select :options="resolutionOptions" v-model:value="draftConfigs[model.id].inputResolution" size="small" />
+                   </div>
+               </div>
+             </div>
           </div>
-        </section>
-
-        <div class="flex gap-3 justify-end">
-          <n-button size="small" @click="handleDiscard">放弃修改</n-button>
-          <n-button type="primary" size="small" :loading="saving" @click="handleSave">保存配置</n-button>
         </div>
       </div>
+    </div>
 
-      <div v-else class="flex-1 rounded-xl bg-bg-card p-6 flex items-center justify-center">
-        <div class="text-center text-on-surface-variant">
-          <Icon icon="mdi:brain" class="text-5xl opacity-20" />
-          <p class="mt-3 text-sm">选择一个模型查看配置详情</p>
-        </div>
-      </div>
+    <div v-else class="flex-1 rounded-xl bg-bg-card p-12 flex flex-col items-center justify-center border border-dashed border-primary/20">
+      <Icon icon="mdi:database-search-outline" class="text-5xl text-on-surface-variant opacity-50 mb-3" />
+      <p class="text-sm text-on-surface-variant">没有找到相关的模型</p>
+      <n-button type="primary" size="small" class="mt-4" @click="showUploadModal = true">
+         立即上传
+      </n-button>
     </div>
 
     <!-- Upload Modal -->
@@ -347,23 +274,18 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import {
   NInput, NButton, NTag, NSlider, NFormItem, NInputNumber, NSelect,
-  NModal, NForm, NUpload, useMessage, useDialog, NRadioGroup, NRadio, NSpin,
+  NModal, NForm, NUpload, useMessage, useDialog, NRadioGroup, NRadio, NSpin, NDivider
 } from 'naive-ui'
 import { Icon } from '@iconify/vue'
 import { useModelStore } from '@/stores/model'
 import { useNodeStore } from '@/stores/node'
 import type { Model, ModelNodeDeployment, InferenceNode } from '@/types'
-import InfoRow from './InfoRow.vue'
 
 const modelStore = useModelStore()
 const nodeStore = useNodeStore()
 const message = useMessage()
 const dialog = useDialog()
 const searchQuery = ref('')
-const selectedId = ref<string | null>(null)
-const editThreshold = ref(0.65)
-const editConcurrency = ref(4)
-const editResolution = ref('640x640')
 
 const filteredModels = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
@@ -393,19 +315,59 @@ function parsedStatusLabel(status?: string): string {
   return '未知'
 }
 
-function deployStatusType(status?: string): 'success' | 'warning' | 'error' | 'default' {
-  if (status === 'loaded') return 'success'
-  if (status === 'loading') return 'warning'
-  if (status === 'error') return 'error'
-  return 'default'
+// ─── Local Draft Configs ──────────────────────────────────────
+const draftConfigs = reactive<Record<string, { confidenceThreshold: number, maxConcurrency: number, inputResolution: string }>>({})
+
+function getDraftConfig(model: Model) {
+  if (!draftConfigs[model.id]) {
+    draftConfigs[model.id] = {
+      confidenceThreshold: model.confidenceThreshold,
+      maxConcurrency: model.maxConcurrency,
+      inputResolution: model.inputResolution,
+    }
+  }
+  return draftConfigs[model.id]
 }
 
-function deployStatusLabel(status?: string): string {
-  if (status === 'loaded') return '已加载'
-  if (status === 'loading') return '加载中'
-  if (status === 'error') return '错误'
-  return status ?? ''
+function hasConfigChanges(modelId: string) {
+  const model = modelStore.models.find(m => m.id === modelId)
+  if (!model || !draftConfigs[modelId]) return false
+  const draft = draftConfigs[modelId]
+  return draft.confidenceThreshold !== model.confidenceThreshold ||
+         draft.maxConcurrency !== model.maxConcurrency ||
+         draft.inputResolution !== model.inputResolution
 }
+
+const saving = ref<string | null>(null)
+
+async function handleSave(model: Model) {
+  const draft = draftConfigs[model.id]
+  if (!draft) return
+  saving.value = model.id
+  try {
+    await modelStore.updateModelConfig(model.id, {
+      confidenceThreshold: draft.confidenceThreshold,
+      maxConcurrency: draft.maxConcurrency,
+      inputResolution: draft.inputResolution,
+    })
+    message.success(`${model.name} 配置已保存`)
+  } catch (e: any) {
+    message.error(e?.message || '保存失败')
+  } finally {
+    saving.value = null
+  }
+}
+
+function handleDiscard(modelId: string) {
+  const model = modelStore.models.find(m => m.id === modelId)
+  if (!model) return
+  draftConfigs[modelId] = {
+    confidenceThreshold: model.confidenceThreshold,
+    maxConcurrency: model.maxConcurrency,
+    inputResolution: model.inputResolution,
+  }
+}
+
 
 // ─── Upload ───────────────────────────────────────────────────
 const showUploadModal = ref(false)
@@ -473,17 +435,6 @@ onMounted(() => {
   modelStore.fetchModels()
 })
 
-const selectedModel = computed(() =>
-  modelStore.models.find(m => m.id === selectedId.value) ?? null
-)
-
-function selectModelCard(model: Model) {
-  selectedId.value = model.id
-  editThreshold.value = model.confidenceThreshold
-  editConcurrency.value = model.maxConcurrency
-  editResolution.value = model.inputResolution
-}
-
 function getModelIcon(tag: string) {
   const icons: Record<string, string> = {
     Security: 'mdi:shield-check',
@@ -505,33 +456,6 @@ function getTaskTypeTagType(taskType?: string): 'success' | 'warning' | 'info' |
     detect: 'success', segment: 'warning', classify: 'info', pose: 'error',
   }
   return types[taskType ?? 'detect'] ?? 'success'
-}
-
-const saving = ref(false)
-
-async function handleSave() {
-  if (!selectedModel.value) return
-  saving.value = true
-  try {
-    await modelStore.updateModelConfig(selectedModel.value.id, {
-      confidenceThreshold: editThreshold.value,
-      maxConcurrency: editConcurrency.value,
-      inputResolution: editResolution.value,
-    })
-    message.success('配置已保存')
-  } catch (e: any) {
-    message.error(e?.message || '保存失败')
-  } finally {
-    saving.value = false
-  }
-}
-
-function handleDiscard() {
-  if (!selectedModel.value) return
-  editThreshold.value = selectedModel.value.confidenceThreshold
-  editConcurrency.value = selectedModel.value.maxConcurrency
-  editResolution.value = selectedModel.value.inputResolution
-  message.info('已恢复原始配置')
 }
 
 const resolutionOptions = [
@@ -635,7 +559,6 @@ function handleDelete(model: Model) {
     onPositiveClick: async () => {
       try {
         await modelStore.deleteModel(model.id)
-        if (selectedId.value === model.id) selectedId.value = null
         message.success('模型已删除')
       } catch (e: any) {
         message.error(e?.message || '删除失败')
