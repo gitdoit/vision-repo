@@ -41,69 +41,7 @@ npm run dev                             # 开发 http://localhost:5173
 ./deploy.sh --mode full --device gpu    # 完整 GPU
 ```
 
-## 技术栈约定
-
-### Java（vision-admin）
-
-| 组件 | 技术 | 备注 |
-|------|------|------|
-| 框架 | Spring Boot 3.2.5 / Java 17 | |
-| ORM | MyBatis-Plus 3.5.6 | mapper XML 在 `resources/mapper/` |
-| 数据库 | PostgreSQL 16 | Flyway 迁移在 `resources/db/migration/` |
-| 缓存 | Caffeine（本地缓存） | 不用 Redis |
-| 任务调度 | Spring @Scheduled | 不用 Kafka |
-| WebSocket | Spring WebSocket | 实时告警推送 |
-| 文件存储 | StorageService 接口 | 本地磁盘 / MinIO 双实现，配置切换 |
-| API 文档 | SpringDoc OpenAPI 2.4 | Swagger UI |
-
-### Python（vision-inference）
-
-| 组件 | 技术 | 备注 |
-|------|------|------|
-| Web | Flask 3.0 | 不用 FastAPI |
-| 推理 | Ultralytics 8.4+ | YOLO 系列 |
-| 图像 | OpenCV headless | |
-| 部署 | Gunicorn | gthread worker |
-
-### 前端（frontend）
-
-| 组件 | 技术 |
-|------|------|
-| 框架 | Vue 3.5 + TypeScript 5.6 |
-| 构建 | Vite 5.4 |
-| UI 库 | Naive UI |
-| 样式 | Tailwind CSS 4 |
-| 状态 | Pinia |
-| 图表 | ECharts |
-| Mock | MSW（Mock Service Worker） |
-
-## 代码规范
-
-### Java 分包规则 — 按业务模块，非技术层
-
-```
-com.vision.{module}/
-├── controller/    # REST API，不写业务逻辑
-├── service/       # 业务逻辑
-├── mapper/        # MyBatis 接口
-├── entity/        # 数据库实体
-└── dto/           # 请求/响应 DTO（含 VO）
-```
-
-模块列表：`camera`, `model`, `rule`, `inference`, `alert`, `dashboard`, `capture`, `storage`, `config`, `common`
-
-### 命名约定
-
-| 类型 | 模式 | 示例 |
-|------|------|------|
-| Controller | `{Module}Controller` | `CameraController` |
-| Service | `{Module}Service` | `CameraService` |
-| Mapper | `{Module}Mapper` | `CameraMapper` |
-| Entity | 单数名词 | `Camera` |
-| 请求 DTO | `{Module}CreateDTO` / `{Module}UpdateDTO` | `CameraCreateDTO` |
-| 响应 VO | `{Module}VO` | `CameraVO` |
-
-### API 契约
+## API 契约
 
 - 路径前缀：`/api/v1`
 - 统一响应：`{ code: number, message: string, data: T }`
@@ -112,21 +50,7 @@ com.vision.{module}/
 - 时间格式：ISO 8601（`yyyy-MM-dd'T'HH:mm:ss`）
 - 状态枚举：英文小写（`online`/`offline`/`loaded`/`unloaded`/`enabled`/`disabled`）
 
-### 数据库规范
-
-- 表名/列名：snake_case
-- MyBatis-Plus 自动驼峰映射（`map-underscore-to-camel-case: true`）
-- 主键策略：`assign_uuid`
-- 软删除：`deleted` 字段
-- JSONB 用于灵活配置字段（`raw_json`, `actions`, `evidence`, `related_objects`）
-- Schema 变更必须通过 Flyway 迁移脚本（`V{n}__{description}.sql`）
-
-### Python 规范
-
-- Flask 路由定义在 `app.py`
-- 业务逻辑在 `inference/` 和 `stream/` 子包
-- 配置通过环境变量，默认值在 `config.py`
-- 线程安全：ModelManager 和 StreamTaskManager 均为线程安全单例
+> 各模块详细技术栈与编码规范见 `.github/instructions/` 下的 scoped 指令文件（按需加载，不重复注入）。
 
 ## 模块间通信
 

@@ -58,8 +58,7 @@ const navItems = [
   { path: '/cameras', label: '摄像头接入管理', icon: 'mdi:video' },
   { path: '/models', label: '模型配置管理', icon: 'mdi:brain' },
   { path: '/nodes', label: '推理节点管理', icon: 'mdi:server-network' },
-  { path: '/tasks', label: '监测任务管理', icon: 'mdi:clipboard-check-outline' },
-  { path: '/rules', label: '业务规则管理', icon: 'mdi:file-document-edit' },
+  { path: '/tasks', label: '推理任务管理', icon: 'mdi:clipboard-check-outline' },
   { path: '/inference', label: '推理历史查询', icon: 'mdi:history' },
 ]
 

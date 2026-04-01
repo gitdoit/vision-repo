@@ -16,6 +16,19 @@ com.vision.{module}/
 └── dto/           # 请求/响应 DTO、VO — 一个文件一个类
 ```
 
+模块列表：`camera`, `model`, `rule`, `inference`, `alert`, `dashboard`, `capture`, `storage`, `config`, `common`
+
+## 命名约定
+
+| 类型 | 模式 | 示例 |
+|------|------|------|
+| Controller | `{Module}Controller` | `CameraController` |
+| Service | `{Module}Service` | `CameraService` |
+| Mapper | `{Module}Mapper` | `CameraMapper` |
+| Entity | 单数名词 | `Camera` |
+| 请求 DTO | `{Module}CreateDTO` / `{Module}UpdateDTO` | `CameraCreateDTO` |
+| 响应 VO | `{Module}VO` | `CameraVO` |
+
 ## MyBatis-Plus 要点
 
 - 主键策略：`@TableId(type = IdType.ASSIGN_UUID)`

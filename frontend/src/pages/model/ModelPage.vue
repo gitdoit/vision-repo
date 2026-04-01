@@ -239,9 +239,6 @@
         <n-form-item label="业务标签">
           <n-select v-model:value="uploadForm.businessTag" :options="businessTagOptions" placeholder="选择业务标签" clearable />
         </n-form-item>
-        <n-form-item label="推理引擎">
-          <n-input v-model:value="uploadForm.engineSupport" placeholder="例：TRT,ONNX" />
-        </n-form-item>
         <n-form-item label="目标硬件">
           <n-input v-model:value="uploadForm.targetHardware" placeholder="例：GPU (NVIDIA)" />
         </n-form-item>
@@ -419,7 +416,6 @@ const uploadForm = reactive({
   version: '',
   taskType: 'detect' as string,
   businessTag: null as string | null,
-  engineSupport: '',
   targetHardware: '',
   author: '',
 })
@@ -449,7 +445,7 @@ async function handleUpload() {
       version: uploadForm.version,
       taskType: uploadForm.taskType || 'detect',
       businessTag: uploadForm.businessTag ?? undefined,
-      engineSupport: uploadForm.engineSupport || undefined,
+      engineSupport: 'Ultralytics',
       targetHardware: uploadForm.targetHardware || undefined,
       author: uploadForm.author || undefined,
     })
@@ -468,7 +464,6 @@ function resetUploadForm() {
   uploadForm.version = ''
   uploadForm.taskType = 'detect'
   uploadForm.businessTag = null
-  uploadForm.engineSupport = ''
   uploadForm.targetHardware = ''
   uploadForm.author = ''
   uploadFile.value = null

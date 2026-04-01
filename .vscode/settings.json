@@ -1,5 +1,13 @@
 {
     "workbench.browser.enableChatTools": true,
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "files.exclude": {
+        "data/": true,
+        "logs/": true,
+        "tmp/": true,
+        "**/target/": true,
+        "**/*.class": true,
+        "**/node_modules/": true
+    }
 }
