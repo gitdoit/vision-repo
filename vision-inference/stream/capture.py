@@ -9,6 +9,10 @@ import requests
 
 from inference.engine import InferenceEngine
 
+# Bypass system proxy for internal service communication
+_NO_PROXY_SESSION = requests.Session()
+_NO_PROXY_SESSION.trust_env = False
+
 
 class StreamCapture:
     """
@@ -135,11 +139,10 @@ class StreamCapture:
         }
 
         try:
-            response = requests.post(
+            response = _NO_PROXY_SESSION.post(
                 self.callback_url,
                 json=payload,
                 timeout=5,
-                proxies={'http': None, 'https': None},
             )
             if response.status_code >= 400:
                 print(f"[{self.task_id}] Callback failed: {response.status_code}")

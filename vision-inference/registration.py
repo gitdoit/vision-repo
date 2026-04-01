@@ -69,7 +69,8 @@ def _get_system_load() -> dict:
 
 
 # Bypass system proxy for internal service communication
-_NO_PROXY = {'http': None, 'https': None}
+_NO_PROXY_SESSION = requests.Session()
+_NO_PROXY_SESSION.trust_env = False
 
 
 class NodeRegistration:
@@ -121,7 +122,7 @@ class NodeRegistration:
             attempt += 1
             try:
                 url = f'{self._admin_url}/api/v1/nodes/register'
-                resp = requests.post(url, json=payload, timeout=10, proxies=_NO_PROXY)
+                resp = _NO_PROXY_SESSION.post(url, json=payload, timeout=10)
                 resp.raise_for_status()
 
                 data = resp.json().get('data', {})
@@ -189,7 +190,7 @@ class NodeRegistration:
         }
 
         url = f'{self._admin_url}/api/v1/nodes/heartbeat'
-        resp = requests.post(url, json=payload, timeout=10, proxies=_NO_PROXY)
+        resp = _NO_PROXY_SESSION.post(url, json=payload, timeout=10)
         resp.raise_for_status()
 
     def shutdown(self):

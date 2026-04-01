@@ -1,10 +1,14 @@
 """Image preprocessing utilities."""
 import io
 from typing import Union
-from urllib.request import urlopen
 
 import cv2
 import numpy as np
+import requests
+
+# Bypass system proxy for internal service communication
+_NO_PROXY_SESSION = requests.Session()
+_NO_PROXY_SESSION.trust_env = False
 
 
 def load_image(image_source: Union[str, bytes]) -> np.ndarray:
@@ -27,10 +31,11 @@ def load_image(image_source: Union[str, bytes]) -> np.ndarray:
 
     if isinstance(image_source, str):
         if image_source.startswith(('http://', 'https://')):
-            # Load from URL
+            # Load from URL (bypass proxy for internal service calls)
             try:
-                with urlopen(image_source, timeout=10) as response:
-                    image_bytes = response.read()
+                response = _NO_PROXY_SESSION.get(image_source, timeout=10)
+                response.raise_for_status()
+                image_bytes = response.content
                 nparr = np.frombuffer(image_bytes, np.uint8)
                 image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 if image is None:

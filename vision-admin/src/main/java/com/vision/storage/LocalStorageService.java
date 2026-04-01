@@ -89,6 +89,21 @@ public class LocalStorageService implements StorageService {
             if (relativePath.startsWith("/")) {
                 relativePath = relativePath.substring(1);
             }
+        } else if (url.startsWith("http://") || url.startsWith("https://")) {
+            // URL with different host/port — extract storage-relative path
+            // Try known path prefixes: /files/, /vision/
+            String[] prefixes = {"/files/", "/vision/"};
+            relativePath = null;
+            for (String prefix : prefixes) {
+                int idx = url.indexOf(prefix);
+                if (idx >= 0) {
+                    relativePath = url.substring(idx + prefix.length());
+                    break;
+                }
+            }
+            if (relativePath == null) {
+                throw new RuntimeException("无法解析存储路径，URL不包含已知前缀(/files/或/vision/): " + url);
+            }
         } else {
             relativePath = url;
         }

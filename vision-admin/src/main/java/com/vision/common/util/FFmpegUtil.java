@@ -69,6 +69,15 @@ public class FFmpegUtil {
 
         ProcessBuilder processBuilder = new ProcessBuilder(command);
 
+        // 清除代理环境变量，防止 FFmpeg 子进程经由系统代理访问内网流媒体地址（导致 502）
+        java.util.Map<String, String> env = processBuilder.environment();
+        env.remove("http_proxy");
+        env.remove("https_proxy");
+        env.remove("HTTP_PROXY");
+        env.remove("HTTPS_PROXY");
+        env.remove("all_proxy");
+        env.remove("ALL_PROXY");
+
         processBuilder.redirectErrorStream(true);
 
         Process process = null;
