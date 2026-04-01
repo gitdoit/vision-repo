@@ -72,7 +72,8 @@ class StateStore:
         with self._lock:
             return self._state.get('node_id')
 
-    def add_model(self, model_id: str, model_path: str, device: str):
+    def add_model(self, model_id: str, model_path: str, device: str,
+                  download_url: str = None):
         """Add a model record and persist immediately."""
         with self._lock:
             # Remove existing entry with same model_id
@@ -80,11 +81,14 @@ class StateStore:
                 m for m in self._state.get('loaded_models', [])
                 if m.get('model_id') != model_id
             ]
-            self._state['loaded_models'].append({
+            entry = {
                 'model_id': model_id,
                 'model_path': model_path,
-                'device': device
-            })
+                'device': device,
+            }
+            if download_url:
+                entry['download_url'] = download_url
+            self._state['loaded_models'].append(entry)
             self._save_to_disk()
 
     def remove_model(self, model_id: str):

@@ -5,7 +5,6 @@ import signal
 import sys
 from flask import Flask, request, jsonify
 from werkzeug.exceptions import BadRequest
-from werkzeug.utils import secure_filename
 
 from config import Config
 from inference.engine import InferenceEngine
@@ -150,12 +149,16 @@ def predict():
 def load_model():
     """
     Load a model into memory.
+    Supports two modes:
+      1. download_url: the model file is downloaded automatically
+      2. model_path: use a pre-existing local file path
 
     Request:
         {
             "model_id": "...",
-            "model_path": "/models/xxx.pt",
-            "device": "gpu"  # optional, defaults to config
+            "download_url": "http://...",   # preferred
+            "model_path": "/models/xxx.pt", # fallback (local path)
+            "device": "gpu"                 # optional, defaults to config
         }
     """
     try:
@@ -164,20 +167,22 @@ def load_model():
             raise BadRequest('Request body is required')
 
         model_id = data.get('model_id')
+        download_url = data.get('download_url')
         model_path = data.get('model_path')
         device = data.get('device', Config.DEVICE)
 
         if not model_id:
             raise BadRequest('model_id is required')
-        if not model_path:
-            raise BadRequest('model_path is required')
+        if not download_url and not model_path:
+            raise BadRequest('download_url or model_path is required')
 
         # Resolve relative paths against base path
-        if not os.path.isabs(model_path):
+        if model_path and not os.path.isabs(model_path):
             model_path = os.path.join(Config.MODEL_BASE_PATH, model_path)
 
-        model_manager.load_model(model_id, model_path, device)
-        logger.info(f'Model loaded: {model_id} from {model_path}')
+        model_manager.load_model(model_id, model_path=model_path,
+                                 device=device, download_url=download_url)
+        logger.info(f'Model loaded: {model_id}')
 
         return jsonify({'success': True, 'model_id': model_id})
 
@@ -378,39 +383,6 @@ def stream_tasks():
         }
     """
     return jsonify({'tasks': stream_manager.list_tasks()})
-
-
-@app.route('/models/upload', methods=['POST'])
-def upload_model():
-    """
-    Upload a model file to the inference node.
-
-    Request: multipart/form-data with 'file' field.
-
-    Response:
-        {"success": true, "local_path": "/data/vision/models/xxx.pt"}
-    """
-    try:
-        if 'file' not in request.files:
-            raise BadRequest('file is required')
-
-        file = request.files['file']
-        if not file.filename:
-            raise BadRequest('filename is empty')
-
-        filename = secure_filename(file.filename)
-        os.makedirs(Config.MODEL_BASE_PATH, exist_ok=True)
-        local_path = os.path.join(Config.MODEL_BASE_PATH, filename)
-        file.save(local_path)
-        logger.info('Model file uploaded: %s', local_path)
-
-        return jsonify({'success': True, 'local_path': local_path})
-
-    except BadRequest as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        logger.error('Model upload error: %s', e)
-        return jsonify({'error': 'Internal server error'}), 500
 
 
 @app.route('/models/parse', methods=['POST'])

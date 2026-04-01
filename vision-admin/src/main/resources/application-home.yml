@@ -2,19 +2,17 @@
 
 spring:
   datasource:
-#    url: jdbc:postgresql://10.5.5.104:25432/gscsfy_l3_gasdb_v1?currentSchema=vision
-#    username: postgres
-#    password: 3a07eb49
     url: jdbc:postgresql://127.0.0.1:49153/vision?currentSchema=vision
     username: postgres
     password: postgrespw
+
 # Vision 开发环境配置
 vision:
   inference:
     service-url: http://localhost:26331
 
   storage:
-    type: minio
+    type: local
     local:
       base-path: ./data/files
       base-url: http://localhost:26330/files

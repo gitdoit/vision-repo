@@ -16,7 +16,7 @@ com.vision.{module}/
 └── dto/           # 请求/响应 DTO、VO — 一个文件一个类
 ```
 
-模块列表：`camera`, `model`, `rule`, `inference`, `alert`, `dashboard`, `capture`, `storage`, `config`, `common`
+模块列表：`camera`, `model`, `rule`, `inference`, `alert`, `dashboard`, `capture`, `storage`, `config`, `common`, `task`, `node`
 
 ## 命名约定
 
@@ -64,3 +64,9 @@ public R<CameraVO> getCamera(@PathVariable String id) {
 
 通过 `InferenceClient`（HTTP）调用 Python 服务，不要在 Java 中引入 Python 依赖。
 推理服务地址配置在 `vision.inference.service-url`。
+多节点场景下，通过 `inference_node` 表管理节点注册 / 心跳 / 负载，详见 [多节点推理服务架构重构.md](../../多节点推理服务架构重构.md)。
+
+## 监测任务
+
+监测任务（`task` 模块）编排摄像头 + 模型 + 规则的定时抓图推理流程。
+设计详见 [监测任务模块设计与实现.md](../../监测任务模块设计与实现.md)。

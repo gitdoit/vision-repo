@@ -32,52 +32,15 @@ public class InferenceClient {
     }
 
     /**
-     * 上传模型文件到推理节点
-     *
-     * @return 推理节点上的本地路径
+     * 加载模型（推理节点自行从 downloadUrl 下载文件）
      */
-    public String uploadModelFile(String nodeId, byte[] fileBytes, String filename) {
-        String baseUrl = nodeRouter.getNodeUrl(nodeId);
-        String url = baseUrl + "/models/upload";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", new ByteArrayResource(fileBytes) {
-            @Override
-            public String getFilename() {
-                return filename;
-            }
-        });
-
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null
-                    && Boolean.TRUE.equals(response.getBody().get("success"))) {
-                return (String) response.getBody().get("local_path");
-            }
-            throw new BizException("模型文件上传失败");
-        } catch (BizException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("上传模型文件失败: nodeId={}, filename={}", nodeId, filename, e);
-            throw new BizException("模型文件上传失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 加载模型
-     */
-    public void loadModel(String nodeId, String modelId, String modelPath, String device) {
+    public void loadModel(String nodeId, String modelId, String downloadUrl, String device) {
         String baseUrl = nodeRouter.getNodeUrl(nodeId);
         String url = baseUrl + "/models/load";
 
         Map<String, Object> request = new HashMap<>();
         request.put("model_id", modelId);
-        request.put("model_path", modelPath);
+        request.put("download_url", downloadUrl);
         request.put("device", device);
 
         try {

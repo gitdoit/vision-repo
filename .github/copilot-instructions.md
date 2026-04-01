@@ -3,7 +3,15 @@
 ## 项目概述
 
 工业/安防视觉分析平台，核心链路：**摄像头接入 → 定时抓图 → YOLO 推理 → 规则匹配 → 告警推送**。
-详见 [PROJECT.md](../PROJECT.md) 获取完整架构设计，[业务需求.md](../业务需求.md) 获取功能规格。
+支持多推理节点水平扩展（GPU 节点自动注册 + 心跳）。
+
+| 文档 | 说明 |
+|------|------|
+| [PROJECT.md](../PROJECT.md) | 完整架构设计 |
+| [业务需求.md](../业务需求.md) | 功能规格 |
+| [监测任务模块设计与实现.md](../监测任务模块设计与实现.md) | 监测任务调度设计 |
+| [多节点推理服务架构重构.md](../多节点推理服务架构重构.md) | 多节点推理架构 |
+| [系统流程总结.md](../系统流程总结.md) | 端到端流程总结 |
 
 ## 仓库结构
 
@@ -55,13 +63,16 @@ npm run dev                             # 开发 http://localhost:5173
 ## 模块间通信
 
 ```
-前端 ──HTTP──→ vision-admin（Java）──HTTP──→ vision-inference（Python）
+前端 ──HTTP──→ vision-admin（Java）──HTTP──→ vision-inference（Python） × N 节点
                     │                              │
                     ├── PostgreSQL                  ├── YOLO 模型文件
-                    └── StorageService              └── RTSP 流抓帧
-                        (本地磁盘/MinIO)
+                    ├── StorageService              ├── RTSP 流抓帧
+                    │   (本地磁盘/MinIO)            └── 自动注册 + 心跳
+                    └── 推理节点管理
+                        (注册/心跳/负载)
 
 Python → Java 回调：POST /api/v1/inference/callback（流式推理结果）
+Python → Java 注册：POST /api/v1/nodes/register + PUT /nodes/{id}/heartbeat
 ```
 
 ## 关键文件索引
@@ -78,6 +89,8 @@ Python → Java 回调：POST /api/v1/inference/callback（流式推理结果）
 | Python API 文档 | [vision-inference/README.md](../vision-inference/README.md) |
 | 前端 API 客户端 | [frontend/src/api/client.ts](../frontend/src/api/client.ts) |
 | 前端类型定义 | [frontend/src/types/index.ts](../frontend/src/types/index.ts) |
+| 节点注册模块 | [vision-inference/registration.py](../vision-inference/registration.py) |
+| 节点状态持久化 | [vision-inference/state_store.py](../vision-inference/state_store.py) |
 | Docker 完整部署 | [docker-compose.yml](../docker-compose.yml) |
 | Docker 轻量部署 | [docker-compose.lite.yml](../docker-compose.lite.yml) |
 
@@ -89,4 +102,7 @@ Python → Java 回调：POST /api/v1/inference/callback（流式推理结果）
 - **存储文件路径**：`{类型}/{日期}/{文件名}`，如 `images/2026-03-29/cam001_abc123.jpg`
 - **已加载模型不允许删除**：需先卸载再删
 - **规则发布后即时生效**：无需重启服务
+- **推理节点**：Python 服务启动后自动注册到 Java 服务，通过心跳保活；Java 通过 `inference_node` 表管理节点状态
+- **端口约定**：Java 26330，Python 26331，前端 5173（开发）
+- **当前无单元测试**：`src/test/` 和前端均无测试文件，添加测试时 Java 用 JUnit 5 + MockMvc，前端用 Vitest
 - 查看 [bugs.md](../bugs.md) 了解当前已知问题

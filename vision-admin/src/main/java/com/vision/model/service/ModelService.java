@@ -204,16 +204,9 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         log.info("开始加载模型: id={}, path={}, device={}, nodeId={}", id, model.getModelPath(), device, targetNodeId);
 
         try {
-            // 读取模型文件并推送到推理节点
-            String modelPath = model.getModelPath();
-            byte[] fileBytes = storageService.readBytes(modelPath);
-            String filename = storageService.extractFileName(modelPath);
-
-            // 上传模型文件到推理节点
-            String remoteModelPath = inferenceClient.uploadModelFile(targetNodeId, fileBytes, filename);
-
-            // 调用推理节点加载模型
-            inferenceClient.loadModel(targetNodeId, id, remoteModelPath, device);
+            // 将模型下载URL传给推理节点，由节点自行下载并加载
+            String downloadUrl = model.getModelPath();
+            inferenceClient.loadModel(targetNodeId, id, downloadUrl, device);
 
             // 更新部署状态为 loaded
             deployment.setStatus("loaded");
@@ -221,7 +214,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
 
             // 如果模型尚未解析，利用此次加载的节点进行解析
             if ("pending".equals(model.getParsedStatus())) {
-                tryParseModelByPath(model, targetNodeId, remoteModelPath);
+                tryParseModelOnNode(model, targetNodeId);
             }
 
             log.info("模型加载成功: id={}, nodeId={}", id, targetNodeId);
@@ -433,14 +426,21 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
     }
 
     /**
-     * 加载时通过已上传路径解析（无需重复传文件）
+     * 模型已加载到节点后，通过节点获取模型状态来解析元数据
      */
-    private void tryParseModelByPath(Model model, String nodeId, String remoteModelPath) {
+    private void tryParseModelOnNode(Model model, String nodeId) {
         try {
-            Map<String, Object> result = inferenceClient.parseModelByPath(nodeId, remoteModelPath);
-            applyParseResult(model.getId(), result);
+            Map<String, Map<String, Object>> modelsStatus = inferenceClient.getModelsStatus(nodeId);
+            Map<String, Object> modelInfo = modelsStatus.get(model.getId());
+            if (modelInfo != null) {
+                String remotePath = (String) modelInfo.get("model_path");
+                if (remotePath != null) {
+                    Map<String, Object> result = inferenceClient.parseModelByPath(nodeId, remotePath);
+                    applyParseResult(model.getId(), result);
+                }
+            }
         } catch (Exception e) {
-            log.warn("模型加载时解析失败: modelId={}", model.getId(), e);
+            log.warn("模型加载后解析失败: modelId={}", model.getId(), e);
         }
     }
 

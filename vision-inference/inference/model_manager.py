@@ -2,12 +2,21 @@
 import os
 import logging
 import threading
+import time
 from typing import Dict, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from urllib.parse import urlparse, unquote
 
+import requests
 from ultralytics import YOLO
 
+from config import Config
+
 logger = logging.getLogger(__name__)
+
+# Bypass system proxy for internal service communication
+_NO_PROXY_SESSION = requests.Session()
+_NO_PROXY_SESSION.trust_env = False
 
 
 @dataclass
@@ -17,6 +26,7 @@ class ModelInfo:
     model_path: str
     device: str
     loaded_at: float
+    download_url: str = ''
     status: str = 'loaded'
 
 
@@ -47,20 +57,25 @@ class ModelManager:
         """Inject StateStore for persistence. Call before loading models."""
         self._state_store = state_store
 
-    def load_model(self, model_id: str, model_path: str, device: str = 'cpu') -> bool:
+    def load_model(self, model_id: str, model_path: str = None,
+                   device: str = 'cpu', download_url: str = None) -> bool:
         """
         Load a YOLO model into memory.
 
+        If download_url is provided and the local file doesn't exist,
+        the model file will be downloaded first.
+
         Args:
             model_id: Unique identifier for this model
-            model_path: Path to the model file (.pt or .onnx)
+            model_path: Path to the model file (.pt or .onnx), optional if download_url given
             device: 'cpu' or 'cuda'
+            download_url: URL to download the model file from
 
         Returns:
             True if loaded successfully
 
         Raises:
-            ValueError: If model_path doesn't exist
+            ValueError: If model file cannot be found or downloaded
             RuntimeError: If model fails to load
         """
         with self._model_lock:
@@ -68,12 +83,19 @@ class ModelManager:
             if model_id in self._models:
                 return True
 
+            # Resolve model_path from download_url if not provided or file missing
+            if download_url:
+                if not model_path:
+                    filename = self._extract_filename(download_url)
+                    model_path = os.path.join(Config.MODEL_BASE_PATH, f'{model_id}_{filename}')
+                if not os.path.exists(model_path):
+                    self._download_file(download_url, model_path)
+
             # Validate path
-            if not os.path.exists(model_path):
+            if not model_path or not os.path.exists(model_path):
                 raise ValueError(f"Model file not found: {model_path}")
 
             try:
-                import time
                 model = YOLO(model_path)
                 model.to(device)
 
@@ -82,11 +104,13 @@ class ModelManager:
                     model_id=model_id,
                     model_path=model_path,
                     device=device,
-                    loaded_at=time.time()
+                    loaded_at=time.time(),
+                    download_url=download_url or '',
                 )
 
                 if self._state_store:
-                    self._state_store.add_model(model_id, model_path, device)
+                    self._state_store.add_model(model_id, model_path, device,
+                                                download_url=download_url)
 
                 return True
             except Exception as e:
@@ -146,6 +170,8 @@ class ModelManager:
         """
         Restore previously loaded models from state store.
         Called on startup to recover from restart.
+        If a model file is missing but a download_url is available,
+        re-downloads the file before loading.
         """
         if not self._state_store:
             return
@@ -160,13 +186,47 @@ class ModelManager:
             model_id = entry.get('model_id')
             model_path = entry.get('model_path')
             device = entry.get('device', 'cpu')
+            download_url = entry.get('download_url')
             try:
+                if not os.path.exists(model_path) and download_url:
+                    logger.info('Model file missing, re-downloading: %s -> %s',
+                                model_id, download_url)
+                    self._download_file(download_url, model_path)
+
                 if os.path.exists(model_path):
-                    self.load_model(model_id, model_path, device)
+                    self.load_model(model_id, model_path, device,
+                                    download_url=download_url)
                     logger.info('Restored model: %s', model_id)
                 else:
-                    logger.warning('Model file missing, skip restore: %s -> %s', model_id, model_path)
+                    logger.warning('Model file missing, skip restore: %s -> %s',
+                                   model_id, model_path)
                     self._state_store.remove_model(model_id)
             except Exception as e:
                 logger.error('Failed to restore model %s: %s', model_id, e)
                 self._state_store.remove_model(model_id)
+
+    @staticmethod
+    def _download_file(url: str, dest_path: str):
+        """Download a file from url to dest_path with streaming."""
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        logger.info('Downloading model: %s -> %s', url, dest_path)
+        resp = _NO_PROXY_SESSION.get(url, stream=True, timeout=300)
+        resp.raise_for_status()
+        tmp_path = dest_path + '.tmp'
+        try:
+            with open(tmp_path, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            os.replace(tmp_path, dest_path)
+            logger.info('Download complete: %s', dest_path)
+        except Exception:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+            raise
+
+    @staticmethod
+    def _extract_filename(url: str) -> str:
+        """Extract filename from a URL."""
+        path = urlparse(url).path
+        filename = unquote(os.path.basename(path))
+        return filename if filename else 'model.pt'

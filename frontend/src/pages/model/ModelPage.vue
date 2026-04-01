@@ -421,9 +421,9 @@ const uploadForm = reactive({
 })
 
 const businessTagOptions = [
-  { label: 'Security', value: 'Security' },
-  { label: 'Industrial', value: 'Industrial' },
-  { label: 'Access', value: 'Access' },
+  { label: '排水转型', value: 'WATER' },
+  { label: '燃气专项', value: 'GAS' },
+  { label: '桥梁专项', value: 'BRIDGE' },
 ]
 
 const taskTypeOptions = [
