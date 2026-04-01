@@ -49,4 +49,21 @@ public interface StorageService {
      * @return 本地文件系统绝对路径
      */
     String resolveToFilePath(String url);
+
+    /**
+     * 读取文件内容为字节数组。
+     * 本地存储从磁盘读取，MinIO 从对象存储下载。
+     *
+     * @param url 文件的访问 URL（由 upload / getUrl 返回）
+     * @return 文件字节数组
+     */
+    byte[] readBytes(String url);
+
+    /**
+     * 从访问 URL 中提取文件名。
+     *
+     * @param url 文件的访问 URL（由 upload / getUrl 返回）
+     * @return 文件名，如 "uuid_best.pt"
+     */
+    String extractFileName(String url);
 }

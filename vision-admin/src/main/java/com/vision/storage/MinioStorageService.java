@@ -113,4 +113,38 @@ public class MinioStorageService implements StorageService {
         // MinIO 存储的文件无本地路径，直接返回 URL
         return url;
     }
+
+    @Override
+    public byte[] readBytes(String url) {
+        String objectKey = extractObjectKey(url);
+        String bucket = properties.getMinio().getBucket();
+        try (InputStream stream = minioClient.getObject(GetObjectArgs.builder()
+                .bucket(bucket)
+                .object(objectKey)
+                .build())) {
+            return stream.readAllBytes();
+        } catch (Exception e) {
+            throw new RuntimeException("从 MinIO 读取文件失败: " + objectKey, e);
+        }
+    }
+
+    @Override
+    public String extractFileName(String url) {
+        String objectKey = extractObjectKey(url);
+        int lastSlash = objectKey.lastIndexOf('/');
+        return lastSlash >= 0 ? objectKey.substring(lastSlash + 1) : objectKey;
+    }
+
+    /**
+     * 从访问 URL 中提取 MinIO 对象 key
+     */
+    private String extractObjectKey(String url) {
+        String endpoint = properties.getMinio().getEndpoint();
+        String bucket = properties.getMinio().getBucket();
+        String prefix = endpoint + "/" + bucket + "/";
+        if (url.startsWith(prefix)) {
+            return url.substring(prefix.length());
+        }
+        return url;
+    }
 }

@@ -121,21 +121,28 @@ public class InferenceClient {
     }
 
     /**
-     * 获取已加载模型列表
+     * 获取推理节点上已加载的模型列表。
+     * Python /models/status 返回格式: { "models": { "modelId": { "model_id": ..., "device": ..., ... }, ... } }
+     *
+     * @return modelId → 模型信息 Map；失败时返回空 Map
      */
-    public List<Map<String, Object>> getModelsStatus(String nodeId) {
+    @SuppressWarnings("unchecked")
+    public Map<String, Map<String, Object>> getModelsStatus(String nodeId) {
         String baseUrl = nodeRouter.getNodeUrl(nodeId);
         String url = baseUrl + "/models/status";
 
         try {
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return (List<Map<String, Object>>) response.getBody().get("models");
+                Object models = response.getBody().get("models");
+                if (models instanceof Map) {
+                    return (Map<String, Map<String, Object>>) models;
+                }
             }
         } catch (Exception e) {
             log.error("获取模型状态失败: nodeId={}", nodeId, e);
         }
-        return List.of();
+        return Map.of();
     }
 
     /**
@@ -281,6 +288,71 @@ public class InferenceClient {
             return response.getStatusCode() == HttpStatus.OK;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * 解析模型文件，提取类别名称、任务类型、输入尺寸等元数据。
+     * 向推理节点发送模型文件，由推理服务临时加载并解析后返回。
+     *
+     * @return 解析结果 Map，包含 class_names, num_classes, task_type, input_size
+     */
+    public Map<String, Object> parseModel(String nodeId, byte[] fileBytes, String filename) {
+        String baseUrl = nodeRouter.getNodeUrl(nodeId);
+        String url = baseUrl + "/models/parse";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource(fileBytes) {
+            @Override
+            public String getFilename() {
+                return filename;
+            }
+        });
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null
+                    && Boolean.TRUE.equals(response.getBody().get("success"))) {
+                return response.getBody();
+            }
+            throw new BizException("模型解析失败");
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("模型解析失败: nodeId={}, filename={}", nodeId, filename, e);
+            throw new BizException("模型解析失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 解析已上传到推理节点上的模型文件（通过路径引用）
+     *
+     * @return 解析结果 Map，包含 class_names, num_classes, task_type, input_size
+     */
+    public Map<String, Object> parseModelByPath(String nodeId, String modelPath) {
+        String baseUrl = nodeRouter.getNodeUrl(nodeId);
+        String url = baseUrl + "/models/parse";
+
+        Map<String, Object> request = new HashMap<>();
+        request.put("model_path", modelPath);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null
+                    && Boolean.TRUE.equals(response.getBody().get("success"))) {
+                return response.getBody();
+            }
+            throw new BizException("模型解析失败");
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("模型解析失败: nodeId={}, modelPath={}", nodeId, modelPath, e);
+            throw new BizException("模型解析失败: " + e.getMessage());
         }
     }
 }

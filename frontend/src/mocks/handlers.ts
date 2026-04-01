@@ -21,7 +21,6 @@ export const handlers = [
     const size = parseInt(url.searchParams.get('size') || '20', 10)
     const keyword = url.searchParams.get('keyword') || ''
     const status = url.searchParams.get('status') || ''
-    const groupId = url.searchParams.get('groupId') || ''
     let filtered = cameras
     if (keyword) {
       const kw = keyword.toLowerCase()
@@ -29,27 +28,6 @@ export const handlers = [
     }
     if (status) {
       filtered = filtered.filter(c => c.status === status)
-    }
-    if (groupId) {
-      // 递归收集子分组ID
-      const collectIds = (id: string): string[] => {
-        const ids = [id]
-        for (const g of cameraGroups) {
-          if (g.id === id && g.children) {
-            for (const c of g.children) ids.push(...collectIds(c.id))
-          }
-          if (g.children) {
-            for (const child of g.children) {
-              if (child.id === id && child.children) {
-                for (const gc of child.children) ids.push(...collectIds(gc.id))
-              }
-            }
-          }
-        }
-        return ids
-      }
-      const allGroupIds = collectIds(groupId)
-      filtered = filtered.filter(c => c.groups.some(g => allGroupIds.includes(g.id)))
     }
     const start = (page - 1) * size
     const items = filtered.slice(start, start + size)
@@ -61,14 +39,6 @@ export const handlers = [
     const newGroup = { id: 'g-new-' + Date.now(), name: body.name, icon: 'folder', cameraCount: 0 }
     return HttpResponse.json(newGroup, { status: 201 })
   }),
-  http.put(`${BASE}/cameras/groups/:id`, async ({ params, request }) => {
-    const body = await request.json() as Record<string, unknown>
-    const group = cameraGroups.find(g => g.id === params.id)
-      || cameraGroups.flatMap(g => g.children || []).find(g => g.id === params.id)
-    if (!group) return new HttpResponse(null, { status: 404 })
-    if (body.name) group.name = body.name as string
-    return HttpResponse.json(group)
-  }),
   http.delete(`${BASE}/cameras/groups/:id`, () => new HttpResponse(null, { status: 204 })),
   http.get(`${BASE}/cameras/:id`, ({ params }) => {
     const cam = cameras.find(c => c.id === params.id)
@@ -76,19 +46,6 @@ export const handlers = [
   }),
   http.post(`${BASE}/cameras`, () => HttpResponse.json(cameras[0], { status: 201 })),
   http.put(`${BASE}/cameras/:id`, () => HttpResponse.json(cameras[0])),
-  http.put(`${BASE}/cameras/:id/groups`, async ({ params, request }) => {
-    const body = await request.json() as { groupIds: string[] }
-    const cam = cameras.find(c => c.id === params.id)
-    if (!cam) return new HttpResponse(null, { status: 404 })
-    // 根据 groupIds 查找分组名称
-    const allGroups: { id: string; name: string }[] = []
-    for (const g of cameraGroups) {
-      allGroups.push({ id: g.id, name: g.name })
-      if (g.children) for (const c of g.children) allGroups.push({ id: c.id, name: c.name })
-    }
-    cam.groups = body.groupIds.map(gid => allGroups.find(g => g.id === gid) || { id: gid, name: gid })
-    return HttpResponse.json(null, { status: 200 })
-  }),
   http.delete(`${BASE}/cameras/:id`, () => new HttpResponse(null, { status: 204 })),
   http.post(`${BASE}/cameras/import`, () => HttpResponse.json({ success: 3, failed: 0 })),
 
@@ -118,7 +75,10 @@ export const handlers = [
       ...models[0],
       id: 'm' + (models.length + 1),
       name: 'Uploaded Model',
-      status: 'unloaded' as const,
+      parsedStatus: 'pending' as const,
+      classNames: [] as string[],
+      numClasses: 0,
+      deployments: [],
       createdAt: new Date().toISOString(),
       versionHistory: [{ version: 'V1.0.0', description: '初始版本' }],
     }
@@ -129,28 +89,62 @@ export const handlers = [
   http.post(`${BASE}/models/:id/unload`, () => HttpResponse.json({ success: true })),
   http.put(`${BASE}/models/:id/config`, () => HttpResponse.json(models[0])),
   http.delete(`${BASE}/models/:id`, () => new HttpResponse(null, { status: 204 })),
-  http.get(`${BASE}/models/device/info`, ({ request }) => {
-    const url = new URL(request.url)
-    const nodeId = url.searchParams.get('nodeId')
-    if (!nodeId) {
-      return HttpResponse.json({ code: 400, message: 'nodeId is required' }, { status: 400 })
-    }
-    return HttpResponse.json({
-      devices: ['cpu', 'cuda'],
-      cuda_available: true,
-      gpu_name: 'NVIDIA GeForce RTX 3090',
-    })
-  }),
+  http.get(`${BASE}/models/device/info`, () => HttpResponse.json({
+    devices: ['cpu', 'cuda'],
+    cuda_available: true,
+    gpu_name: 'NVIDIA GeForce RTX 3090',
+  })),
 
-  // Nodes
+  // Inference Nodes
   http.get(`${BASE}/nodes`, () => HttpResponse.json(inferenceNodes)),
   http.get(`${BASE}/nodes/:id`, ({ params }) => {
     const node = inferenceNodes.find(n => n.id === params.id)
     return node ? HttpResponse.json(node) : new HttpResponse(null, { status: 404 })
   }),
-  http.put(`${BASE}/nodes/:id/name`, () => HttpResponse.json({ success: true })),
+  http.put(`${BASE}/nodes/:id/name`, () => HttpResponse.json(inferenceNodes[0])),
   http.delete(`${BASE}/nodes/:id`, () => new HttpResponse(null, { status: 204 })),
-  http.post(`${BASE}/nodes/:id/reload`, () => HttpResponse.json({ success: true, mode: 'dev', message: 'Restarting' })),
+  http.post(`${BASE}/nodes/:id/reload`, () => HttpResponse.json({ success: true })),
+  http.post(`${BASE}/nodes/register`, () => HttpResponse.json(inferenceNodes[0])),
+  http.post(`${BASE}/nodes/heartbeat`, () => HttpResponse.json({ success: true })),
+
+  // Monitor Tasks
+  http.get(`${BASE}/monitor-tasks`, ({ request }) => {
+    const url = new URL(request.url)
+    const status = url.searchParams.get('status') || ''
+    const keyword = url.searchParams.get('keyword') || ''
+    let filtered = monitorTasks
+    if (status) filtered = filtered.filter(t => t.status === status)
+    if (keyword) {
+      const kw = keyword.toLowerCase()
+      filtered = filtered.filter(t => t.name.toLowerCase().includes(kw))
+    }
+    return HttpResponse.json({ items: filtered, total: filtered.length })
+  }),
+  http.get(`${BASE}/monitor-tasks/:id`, ({ params }) => {
+    const task = monitorTasks.find(t => t.id === params.id)
+    return task ? HttpResponse.json(task) : new HttpResponse(null, { status: 404 })
+  }),
+  http.post(`${BASE}/monitor-tasks`, async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>
+    const newTask = { ...monitorTasks[0], id: 'task-' + Date.now(), ...body, totalInference: 0, totalAlert: 0, createdAt: new Date().toISOString() }
+    monitorTasks.push(newTask as typeof monitorTasks[0])
+    return HttpResponse.json(newTask, { status: 201 })
+  }),
+  http.put(`${BASE}/monitor-tasks/:id`, async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>
+    return HttpResponse.json({ ...monitorTasks[0], ...body })
+  }),
+  http.delete(`${BASE}/monitor-tasks/:id`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE}/monitor-tasks/:id/start`, ({ params }) => {
+    const task = monitorTasks.find(t => t.id === params.id)
+    if (task) task.status = 'running'
+    return HttpResponse.json({ success: true })
+  }),
+  http.post(`${BASE}/monitor-tasks/:id/stop`, ({ params }) => {
+    const task = monitorTasks.find(t => t.id === params.id)
+    if (task) task.status = 'stopped'
+    return HttpResponse.json({ success: true })
+  }),
 
   // Rules
   http.get(`${BASE}/rules`, () => HttpResponse.json(rules)),
@@ -236,40 +230,4 @@ export const handlers = [
       inferenceTimeMs: 23.5,
     })
   }),
-
-  // Monitor Tasks
-  http.get(`${BASE}/monitor-tasks`, ({ request }) => {
-    const url = new URL(request.url)
-    const page = parseInt(url.searchParams.get('page') || '1', 10)
-    const size = parseInt(url.searchParams.get('size') || '20', 10)
-    const status = url.searchParams.get('status') || ''
-    let filtered = monitorTasks
-    if (status) {
-      filtered = filtered.filter(t => t.status === status)
-    }
-    const start = (page - 1) * size
-    const items = filtered.slice(start, start + size)
-    return HttpResponse.json({ code: 200, message: 'ok', data: { items, total: filtered.length } })
-  }),
-  http.get(`${BASE}/monitor-tasks/:id`, ({ params }) => {
-    const task = monitorTasks.find(t => t.id === params.id)
-    return task
-      ? HttpResponse.json({ code: 200, message: 'ok', data: task })
-      : new HttpResponse(null, { status: 404 })
-  }),
-  http.post(`${BASE}/monitor-tasks`, () =>
-    HttpResponse.json({ code: 200, message: 'ok', data: monitorTasks[0] }, { status: 201 }),
-  ),
-  http.put(`${BASE}/monitor-tasks/:id`, () =>
-    HttpResponse.json({ code: 200, message: 'ok', data: monitorTasks[0] }),
-  ),
-  http.delete(`${BASE}/monitor-tasks/:id`, () =>
-    HttpResponse.json({ code: 200, message: 'ok', data: null }),
-  ),
-  http.post(`${BASE}/monitor-tasks/:id/start`, () =>
-    HttpResponse.json({ code: 200, message: 'ok', data: null }),
-  ),
-  http.post(`${BASE}/monitor-tasks/:id/stop`, () =>
-    HttpResponse.json({ code: 200, message: 'ok', data: null }),
-  ),
 ]

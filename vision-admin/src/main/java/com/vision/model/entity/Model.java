@@ -51,19 +51,19 @@ public class Model {
     private String targetHardware;
 
     /**
-     * 状态: loaded/unloaded
+     * 类别名称，逗号分隔: "person,car,bicycle"
      */
-    private String status;
+    private String classNames;
 
     /**
-     * 当前加载设备: cpu/cuda
+     * 类别总数
      */
-    private String device;
+    private Integer numClasses;
 
     /**
-     * 设备硬件名称，如 NVIDIA GeForce RTX 3060
+     * 模型解析状态: pending / parsed / failed
      */
-    private String deviceName;
+    private String parsedStatus;
 
     /**
      * 置信度阈值
@@ -84,11 +84,6 @@ public class Model {
      * 模型文件路径
      */
     private String modelPath;
-
-    /**
-     * 模型加载所在节点ID
-     */
-    private String nodeId;
 
     /**
      * 作者

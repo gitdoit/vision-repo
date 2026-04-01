@@ -138,7 +138,8 @@ class StreamCapture:
             response = requests.post(
                 self.callback_url,
                 json=payload,
-                timeout=5
+                timeout=5,
+                proxies={'http': None, 'https': None},
             )
             if response.status_code >= 400:
                 print(f"[{self.task_id}] Callback failed: {response.status_code}")

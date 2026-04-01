@@ -187,7 +187,15 @@
         <n-divider>告警条件</n-divider>
 
         <n-form-item label="检测目标" path="alertTarget">
-          <n-input v-model:value="formData.alertTarget" placeholder="目标类别，多个用逗号分隔" />
+          <n-select
+            v-model:value="alertTargetValues"
+            multiple
+            :options="classNameOptions"
+            placeholder="请先选择模型，然后选择要检测的分类"
+            :disabled="classNameOptions.length === 0"
+            tag
+            filterable
+          />
         </n-form-item>
 
         <n-form-item label="置信度阈值" path="alertConfidence">
@@ -322,8 +330,8 @@ const defaultForm = () => ({
   alertLevel: 'warning',
   pushMethods: ['websocket'] as string[],
   callbackUrl: '',
-  scheduleStartTime: '',
-  scheduleEndTime: '',
+  scheduleStartTime: null as string | null,
+  scheduleEndTime: null as string | null,
   scheduleWeekdays: '',
 })
 
@@ -332,7 +340,22 @@ const formData = ref<ReturnType<typeof defaultForm>>(defaultForm())
 // Options for selects
 const groupOptions = ref<{ label: string; value: string }[]>([])
 const modelOptions = ref<{ label: string; value: string }[]>([])
+const allModels = ref<Model[]>([])
+const alertTargetValues = ref<string[]>([])
 
+// Computed class names from selected model
+const classNameOptions = computed(() => {
+  const modelId = formData.value.modelId
+  if (!modelId) return []
+  const model = allModels.value.find(m => m.id === modelId)
+  if (!model || !model.classNames || model.classNames.length === 0) return []
+  return model.classNames.map(c => ({ label: c, value: c }))
+})
+
+// Sync alertTargetValues ↔ formData.alertTarget (comma-separated string)
+watch(alertTargetValues, (vals) => {
+  formData.value.alertTarget = vals.join(',')
+})
 const frequencyOptions = [
   { label: '30秒', value: '30s' },
   { label: '1分钟', value: '1min' },
@@ -351,7 +374,8 @@ async function loadOptions() {
 
   try {
     const res = await getModels() as unknown as { items: Model[]; total: number }
-    modelOptions.value = (res.items || []).map(m => ({ label: `${m.name} (${m.version})`, value: m.id }))
+    allModels.value = res.items || []
+    modelOptions.value = allModels.value.map(m => ({ label: `${m.name} (${m.version})`, value: m.id }))
   } catch { /* ignore */ }
 }
 
@@ -359,6 +383,7 @@ function openCreateModal() {
   editingTask.value = null
   formData.value = defaultForm()
   weekdayValues.value = []
+  alertTargetValues.value = []
   showModal.value = true
 }
 
@@ -377,10 +402,13 @@ function openEditModal(task: MonitorTask) {
     alertLevel: task.alertLevel || 'warning',
     pushMethods: task.pushMethods ? task.pushMethods.split(',') : ['websocket'],
     callbackUrl: task.callbackUrl || '',
-    scheduleStartTime: task.scheduleStartTime || '',
-    scheduleEndTime: task.scheduleEndTime || '',
+    scheduleStartTime: task.scheduleStartTime || null,
+    scheduleEndTime: task.scheduleEndTime || null,
     scheduleWeekdays: task.scheduleWeekdays || '',
   }
+  alertTargetValues.value = task.alertTarget
+    ? task.alertTarget.split(',').map(s => s.trim()).filter(Boolean)
+    : []
   weekdayValues.value = task.scheduleWeekdays
     ? task.scheduleWeekdays.split(',').map(Number).filter(n => !isNaN(n))
     : []

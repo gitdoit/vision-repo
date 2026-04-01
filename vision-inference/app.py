@@ -1,6 +1,8 @@
 """Flask application for vision-inference service."""
 import os
 import logging
+import signal
+import sys
 from flask import Flask, request, jsonify
 from werkzeug.exceptions import BadRequest
 from werkzeug.utils import secure_filename
@@ -251,80 +253,6 @@ def model_status():
     })
 
 
-@app.route('/models/upload', methods=['POST'])
-def upload_model():
-    """
-    Receive a model file pushed from the admin service.
-
-    Request: multipart/form-data
-        - file: model file (.pt, .onnx, etc.)
-        - filename: optional target filename
-    Response:
-        {"success": true, "local_path": "/models/xxx.pt"}
-    """
-    try:
-        if 'file' not in request.files:
-            raise BadRequest('file is required')
-
-        file = request.files['file']
-        if not file.filename:
-            raise BadRequest('Empty filename')
-
-        filename = request.form.get('filename') or secure_filename(file.filename)
-        os.makedirs(Config.MODEL_BASE_PATH, exist_ok=True)
-        save_path = os.path.join(Config.MODEL_BASE_PATH, filename)
-        file.save(save_path)
-
-        logger.info('Model file uploaded: %s', save_path)
-        return jsonify({'success': True, 'local_path': save_path})
-
-    except BadRequest as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        logger.error('Model upload error: %s', e)
-        return jsonify({'error': 'Internal server error'}), 500
-
-
-@app.route('/system/info', methods=['GET'])
-def system_info():
-    """
-    Return system hardware and runtime information.
-    """
-    import platform
-    info = {
-        'hostname': platform.node(),
-        'os': platform.system(),
-        'cpu': platform.processor() or platform.machine(),
-        'device': Config.DEVICE,
-    }
-
-    try:
-        import psutil
-        mem = psutil.virtual_memory()
-        info['memory_total'] = mem.total
-        info['memory_used'] = mem.used
-        info['cpu_percent'] = psutil.cpu_percent(interval=0.1)
-    except ImportError:
-        pass
-
-    try:
-        import torch
-        info['cuda_available'] = torch.cuda.is_available()
-        if torch.cuda.is_available():
-            info['gpu_name'] = torch.cuda.get_device_name(0)
-            info['gpu_count'] = torch.cuda.device_count()
-    except ImportError:
-        info['cuda_available'] = False
-
-    info['loaded_models'] = len(model_manager.list_models())
-    info['active_tasks'] = len(stream_manager.list_tasks())
-
-    if _node_registration:
-        info['node_id'] = _node_registration.node_id
-
-    return jsonify(info)
-
-
 @app.route('/device/info', methods=['GET'])
 def device_info():
     """
@@ -452,6 +380,149 @@ def stream_tasks():
     return jsonify({'tasks': stream_manager.list_tasks()})
 
 
+@app.route('/models/upload', methods=['POST'])
+def upload_model():
+    """
+    Upload a model file to the inference node.
+
+    Request: multipart/form-data with 'file' field.
+
+    Response:
+        {"success": true, "local_path": "/data/vision/models/xxx.pt"}
+    """
+    try:
+        if 'file' not in request.files:
+            raise BadRequest('file is required')
+
+        file = request.files['file']
+        if not file.filename:
+            raise BadRequest('filename is empty')
+
+        filename = secure_filename(file.filename)
+        os.makedirs(Config.MODEL_BASE_PATH, exist_ok=True)
+        local_path = os.path.join(Config.MODEL_BASE_PATH, filename)
+        file.save(local_path)
+        logger.info('Model file uploaded: %s', local_path)
+
+        return jsonify({'success': True, 'local_path': local_path})
+
+    except BadRequest as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error('Model upload error: %s', e)
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+@app.route('/models/parse', methods=['POST'])
+def parse_model():
+    """
+    Parse model metadata (class names, task type, input size).
+    Accepts either multipart file upload or JSON with model_path.
+
+    Response:
+        {
+            "success": true,
+            "class_names": ["person", "car"],
+            "num_classes": 2,
+            "task_type": "detect",
+            "input_size": 640
+        }
+    """
+    from ultralytics import YOLO
+    import tempfile
+
+    tmp_path = None
+    try:
+        if request.content_type and 'multipart' in request.content_type:
+            if 'file' not in request.files:
+                raise BadRequest('file is required')
+            file = request.files['file']
+            fd, tmp_path = tempfile.mkstemp(suffix='.pt')
+            os.close(fd)
+            file.save(tmp_path)
+            model_path = tmp_path
+        else:
+            data = request.get_json()
+            if not data or not data.get('model_path'):
+                raise BadRequest('model_path is required')
+            model_path = data['model_path']
+
+        model = YOLO(model_path)
+
+        # Extract metadata
+        names = model.names  # dict: {0: 'person', 1: 'car', ...}
+        class_names = list(names.values()) if names else []
+        num_classes = len(class_names)
+
+        task_type = getattr(model, 'task', 'detect') or 'detect'
+
+        input_size = 640
+        try:
+            if hasattr(model, 'overrides') and model.overrides.get('imgsz'):
+                imgsz = model.overrides['imgsz']
+                input_size = imgsz if isinstance(imgsz, int) else imgsz[0]
+        except Exception:
+            pass
+
+        return jsonify({
+            'success': True,
+            'class_names': class_names,
+            'num_classes': num_classes,
+            'task_type': task_type,
+            'input_size': input_size,
+        })
+
+    except BadRequest as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error('Model parse error: %s', e)
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+
+@app.route('/system/info', methods=['GET'])
+def system_info():
+    """Return system hardware and runtime information."""
+    import platform
+    info = {
+        'hostname': platform.node(),
+        'os': platform.system(),
+        'cpu': platform.processor() or platform.machine(),
+        'device': Config.DEVICE,
+    }
+
+    try:
+        import psutil
+        mem = psutil.virtual_memory()
+        info['memory_total'] = mem.total
+        info['memory_used'] = mem.used
+        info['cpu_percent'] = psutil.cpu_percent(interval=0.1)
+    except ImportError:
+        pass
+
+    try:
+        import torch
+        info['cuda_available'] = torch.cuda.is_available()
+        if torch.cuda.is_available():
+            info['gpu_name'] = torch.cuda.get_device_name(0)
+            info['gpu_count'] = torch.cuda.device_count()
+    except ImportError:
+        info['cuda_available'] = False
+
+    info['loaded_models'] = len(model_manager.list_models())
+    info['active_tasks'] = len(stream_manager.list_tasks())
+
+    if _node_registration:
+        info['node_id'] = _node_registration.node_id
+
+    return jsonify(info)
+
+
 @app.route('/admin/reload', methods=['POST'])
 def admin_reload():
     """
@@ -459,8 +530,6 @@ def admin_reload():
     Under Gunicorn: sends SIGHUP to master process to gracefully restart workers.
     Dev mode (python app.py): schedules process restart.
     """
-    import signal
-
     is_gunicorn = 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '')
 
     if is_gunicorn:
@@ -470,12 +539,15 @@ def admin_reload():
         return jsonify({'success': True, 'mode': 'gunicorn', 'message': 'SIGHUP sent to master'})
     else:
         logger.info('Reload requested: scheduling process restart')
-        import threading
-        import sys
+
         def _restart():
+            import time
+            time.sleep(1)
             os.execv(sys.executable, [sys.executable] + sys.argv)
-        threading.Timer(0.5, _restart).start()
-        return jsonify({'success': True, 'mode': 'dev', 'message': 'Restarting in 0.5s'})
+
+        import threading
+        threading.Thread(target=_restart, daemon=True).start()
+        return jsonify({'success': True, 'mode': 'dev', 'message': 'Restart scheduled'})
 
 
 @app.errorhandler(404)

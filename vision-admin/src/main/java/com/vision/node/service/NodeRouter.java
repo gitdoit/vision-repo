@@ -82,4 +82,16 @@ public class NodeRouter {
         }
         return 0.0;
     }
+
+    /**
+     * 返回任意一个在线节点的 ID，无在线节点返回 null。
+     * 用于不需要负载均衡的场景（如模型解析）。
+     */
+    public String selectAnyOnlineNode() {
+        List<NodeVO> onlineNodes = nodeService.getOnlineNodes();
+        if (onlineNodes.isEmpty()) {
+            return null;
+        }
+        return onlineNodes.get(0).getId();
+    }
 }

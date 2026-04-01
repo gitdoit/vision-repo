@@ -22,19 +22,20 @@ public class ModelVO {
     private String taskType;
     private List<String> engineSupport;
     private String targetHardware;
-    private String status;
-    private String device;
-    private String deviceName;
+    private List<String> classNames;
+    private Integer numClasses;
+    private String parsedStatus;
     private BigDecimal confidenceThreshold;
     private String inputResolution;
     private Integer maxConcurrency;
     private String modelPath;
-    private String nodeId;
-    private String nodeName;
     private String author;
     private Integer avgLatency;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    /** 当前部署列表（模型加载到了哪些节点） */
+    private List<ModelDeploymentVO> deployments;
 
     /**
      * 从实体转换
@@ -52,14 +53,17 @@ public class ModelVO {
                         : Collections.emptyList()
         );
         vo.setTargetHardware(entity.getTargetHardware());
-        vo.setStatus(entity.getStatus());
-        vo.setDevice(entity.getDevice());
-        vo.setDeviceName(entity.getDeviceName());
+        vo.setClassNames(
+                entity.getClassNames() != null && !entity.getClassNames().isEmpty()
+                        ? Arrays.asList(entity.getClassNames().split(","))
+                        : Collections.emptyList()
+        );
+        vo.setNumClasses(entity.getNumClasses());
+        vo.setParsedStatus(entity.getParsedStatus());
         vo.setConfidenceThreshold(entity.getConfidenceThreshold());
         vo.setInputResolution(entity.getInputResolution());
         vo.setMaxConcurrency(entity.getMaxConcurrency());
         vo.setModelPath(entity.getModelPath());
-        vo.setNodeId(entity.getNodeId());
         vo.setAuthor(entity.getAuthor());
         vo.setAvgLatency(entity.getAvgLatency());
         vo.setCreatedAt(entity.getCreatedAt());

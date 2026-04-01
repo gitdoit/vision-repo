@@ -1,6 +1,7 @@
 package com.vision.alert.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.vision.common.handler.JsonbTypeHandler;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
  * 对应表: alert
  */
 @Data
-@TableName("alert")
+@TableName(value = "alert", autoResultMap = true)
 public class Alert {
 
     /**
@@ -67,16 +68,19 @@ public class Alert {
     /**
      * 关联目标 (JSONB)
      */
+    @TableField(typeHandler = JsonbTypeHandler.class)
     private String relatedObjects;
 
     /**
      * 证据 (JSONB)
      */
+    @TableField(typeHandler = JsonbTypeHandler.class)
     private String evidence;
 
     /**
      * 位置信息 (JSONB)
      */
+    @TableField(typeHandler = JsonbTypeHandler.class)
     private String location;
 
     /**

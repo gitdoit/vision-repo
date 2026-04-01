@@ -1,6 +1,7 @@
 package com.vision.task.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.vision.common.handler.JsonbTypeHandler;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
  * 对应表: monitor_task
  */
 @Data
-@TableName("monitor_task")
+@TableName(value = "monitor_task", autoResultMap = true)
 public class MonitorTask {
 
     @TableId(type = IdType.ASSIGN_UUID)
@@ -73,6 +74,7 @@ public class MonitorTask {
     private String callbackUrl;
 
     /** 自定义请求头 (JSONB) */
+    @TableField(typeHandler = JsonbTypeHandler.class)
     private String callbackHeaders;
 
     /** 指定节点ID列表，逗号分隔，空=自动调度 */

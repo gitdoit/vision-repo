@@ -3,7 +3,9 @@ package com.vision.task.service;
 import com.vision.camera.entity.Camera;
 import com.vision.camera.mapper.CameraMapper;
 import com.vision.model.entity.Model;
+import com.vision.model.entity.ModelNodeDeployment;
 import com.vision.model.mapper.ModelMapper;
+import com.vision.model.service.ModelService;
 import com.vision.task.entity.MonitorTask;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ public class TaskScheduler {
     private final MonitorTaskService monitorTaskService;
     private final CameraMapper cameraMapper;
     private final ModelMapper modelMapper;
+    private final ModelService modelService;
     private final TaskInferencePipeline taskInferencePipeline;
     private final TaskConditionEvaluator conditionEvaluator;
 
@@ -56,7 +59,7 @@ public class TaskScheduler {
                 return;
             }
 
-            log.debug("扫描运行中的监测任务: count={}", runningTasks.size());
+            log.info("任务调度扫描: 运行中任务数={}", runningTasks.size());
             LocalDateTime now = LocalDateTime.now();
 
             for (MonitorTask task : runningTasks) {
@@ -84,9 +87,14 @@ public class TaskScheduler {
             return;
         }
 
-        // 2. 校验模型仍然已加载
+        // 2. 校验模型至少在一个节点上加载
         Model model = modelMapper.selectById(task.getModelId());
-        if (model == null || !"loaded".equals(model.getStatus())) {
+        if (model == null) {
+            log.warn("任务关联模型不存在，跳过: taskId={}, modelId={}", taskId, task.getModelId());
+            return;
+        }
+        ModelNodeDeployment deployment = modelService.findLoadedDeployment(model.getId());
+        if (deployment == null) {
             log.warn("任务关联模型未加载，跳过: taskId={}, modelId={}", taskId, task.getModelId());
             return;
         }
@@ -113,6 +121,9 @@ public class TaskScheduler {
 
                     // 记录调度时间
                     lastDispatchTime.put(taskId + ":" + cameraId, now);
+
+                    log.info("调度推理: taskId={}, taskName={}, cameraId={}, cameraName={}",
+                            taskId, task.getName(), cameraId, camera.getName());
 
                     // 异步执行推理管道
                     executeAsync(task, camera, model);

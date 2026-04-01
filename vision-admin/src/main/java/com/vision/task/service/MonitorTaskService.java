@@ -11,6 +11,7 @@ import com.vision.camera.mapper.CameraGroupMappingMapper;
 import com.vision.common.exception.BizException;
 import com.vision.model.entity.Model;
 import com.vision.model.mapper.ModelMapper;
+import com.vision.model.service.ModelService;
 import com.vision.task.dto.MonitorTaskCreateDTO;
 import com.vision.task.dto.MonitorTaskVO;
 import com.vision.task.entity.MonitorTask;
@@ -36,6 +37,7 @@ public class MonitorTaskService extends ServiceImpl<MonitorTaskMapper, MonitorTa
     private final CameraGroupMapper cameraGroupMapper;
     private final CameraGroupMappingMapper cameraGroupMappingMapper;
     private final ModelMapper modelMapper;
+    private final ModelService modelService;
 
     /**
      * 分页查询监测任务
@@ -195,7 +197,10 @@ public class MonitorTaskService extends ServiceImpl<MonitorTaskMapper, MonitorTa
         if (model == null) {
             throw new BizException("关联模型不存在");
         }
-        if (!"loaded".equals(model.getStatus())) {
+        // 检查模型至少在一个节点上加载
+        com.vision.model.entity.ModelNodeDeployment deployment =
+                modelService.findLoadedDeployment(model.getId());
+        if (deployment == null) {
             throw new BizException("关联模型未加载，请先加载模型");
         }
 

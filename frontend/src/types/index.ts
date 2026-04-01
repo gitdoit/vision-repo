@@ -13,7 +13,7 @@ export interface Camera {
   aiEnabled: boolean
   status: 'online' | 'offline' | 'error'
   lastCaptureTime: string
-  groups: GroupSimple[]
+  groupId: string
   recentTasks: TaskStatus[]
   /** 来源 */
   source: CameraSource
@@ -23,11 +23,6 @@ export interface Camera {
   channelNo?: string
   /** 标签名称（来自视频平台） */
   label?: string
-}
-
-export interface GroupSimple {
-  id: string
-  name: string
 }
 
 export interface TaskStatus {
@@ -95,6 +90,17 @@ export interface PlatformImportResult {
 /** 模型任务类型 */
 export type ModelTaskType = 'detect' | 'segment' | 'classify' | 'pose'
 
+/** 模型节点部署记录 */
+export interface ModelNodeDeployment {
+  id: string
+  nodeId: string
+  nodeName: string
+  device: 'cpu' | 'cuda'
+  deviceName?: string
+  status: 'loading' | 'loaded' | 'error'
+  deployedAt: string
+}
+
 export interface Model {
   id: string
   name: string
@@ -103,11 +109,11 @@ export interface Model {
   taskType: ModelTaskType
   engineSupport: string[]
   targetHardware: string
-  status: 'loaded' | 'unloaded'
-  device?: string
-  deviceName?: string
-  nodeId?: string
-  nodeName?: string
+  /** 模型分类名称列表（从 YOLO 模型文件解析得到） */
+  classNames: string[]
+  numClasses: number
+  /** 模型元数据解析状态: pending / parsed / failed */
+  parsedStatus: 'pending' | 'parsed' | 'failed'
   confidenceThreshold: number
   inputResolution: string
   maxConcurrency: number
@@ -116,6 +122,8 @@ export interface Model {
   author: string
   versionHistory: VersionEntry[]
   avgLatency: number
+  /** 当前在各节点上的部署列表 */
+  deployments: ModelNodeDeployment[]
 }
 
 export interface VersionEntry {
@@ -236,37 +244,21 @@ export interface BusinessLineAlert {
   percentage: number
 }
 
-/** 推理节点 */
-export interface InferenceNode {
-  id: string
-  nodeName: string
-  host: string
-  port: number
-  status: 'online' | 'offline' | 'unknown'
-  deviceType: 'cpu' | 'cuda'
-  gpuName?: string
-  gpuCount: number
-  cpuInfo?: string
-  memoryTotal: number
-  lastHeartbeat?: string
-  registeredAt: string
-  runtimeInfo?: NodeRuntimeInfo
+/** 推理节点运行时负载信息 */
+export interface NodeSystemLoad {
+  cpuPercent: number
+  memoryPercent: number
+  gpuPercent: number
 }
 
-export interface NodeRuntimeInfo {
-  loadedModels?: NodeModelInfo[]
-  activeTasks?: NodeTaskInfo[]
-  systemLoad?: SystemLoad
-}
-
-export interface NodeModelInfo {
+export interface NodeLoadedModel {
   modelId: string
   modelPath: string
   device: string
   loadedAt: number
 }
 
-export interface NodeTaskInfo {
+export interface NodeActiveTask {
   taskId: string
   streamUrl: string
   modelId: string
@@ -274,14 +266,28 @@ export interface NodeTaskInfo {
   running: boolean
 }
 
-export interface SystemLoad {
-  cpuPercent: number
-  memoryPercent: number
-  gpuPercent?: number
+export interface NodeRuntimeInfo {
+  loadedModels: NodeLoadedModel[]
+  activeTasks: NodeActiveTask[]
+  systemLoad: NodeSystemLoad
 }
 
-/** 监测任务状态 */
-export type MonitorTaskStatus = 'stopped' | 'running' | 'error'
+/** 推理节点 */
+export interface InferenceNode {
+  id: string
+  nodeName: string
+  host: string
+  port: number
+  status: 'online' | 'offline'
+  deviceType: 'cpu' | 'cuda'
+  gpuName?: string
+  gpuCount: number
+  cpuInfo?: string
+  memoryTotal: number
+  lastHeartbeat: string
+  registeredAt: string
+  runtimeInfo?: NodeRuntimeInfo
+}
 
 /** 监测任务 */
 export interface MonitorTask {
@@ -293,30 +299,26 @@ export interface MonitorTask {
   groupName?: string
   modelId: string
   modelName?: string
-  status: MonitorTaskStatus
-  captureFrequency: string
+  status: 'running' | 'stopped' | 'error'
+  captureFrequency?: string
   scheduleStartTime?: string
   scheduleEndTime?: string
   scheduleWeekdays?: string
-  effectiveStart?: string
-  effectiveEnd?: string
-  alertTarget?: string
+  alertTarget: string
   alertConfidence: number
   alertFrames: number
   alertLevel: 'severe' | 'warning' | 'info'
-  pushMethods?: string
+  /** 逗号分隔的推送方式: websocket,http_callback */
+  pushMethods: string
   callbackUrl?: string
-  callbackHeaders?: string
-  nodeIds?: string
   totalInference: number
   totalAlert: number
   lastInferenceTime?: string
   lastAlertTime?: string
   createdAt: string
-  updatedAt?: string
 }
 
-/** 监测任务创建/更新请求 */
+/** 监测任务表单（创建/编辑用） */
 export interface MonitorTaskForm {
   name: string
   description?: string
@@ -324,17 +326,14 @@ export interface MonitorTaskForm {
   groupId: string
   modelId: string
   captureFrequency?: string
-  scheduleStartTime?: string
-  scheduleEndTime?: string
+  scheduleStartTime?: string | null
+  scheduleEndTime?: string | null
   scheduleWeekdays?: string
-  effectiveStart?: string
-  effectiveEnd?: string
-  alertTarget?: string
-  alertConfidence?: number
-  alertFrames?: number
-  alertLevel?: string
-  pushMethods?: string
+  alertTarget: string
+  alertConfidence: number
+  alertFrames: number
+  alertLevel: string
+  /** 提交前由 string[] join(',') 得到 */
+  pushMethods: string
   callbackUrl?: string
-  callbackHeaders?: string
-  nodeIds?: string
 }

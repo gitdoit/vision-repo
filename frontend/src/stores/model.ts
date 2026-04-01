@@ -46,8 +46,8 @@ export const useModelStore = defineStore('model', () => {
     await fetchModels()
   }
 
-  async function unloadModel(id: string) {
-    await modelApi.unloadModel(id)
+  async function unloadModel(id: string, nodeId?: string) {
+    await modelApi.unloadModel(id, nodeId)
     await fetchModels()
   }
 

@@ -1,5 +1,6 @@
 package com.vision.task.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vision.alert.entity.Alert;
 import com.vision.alert.mapper.AlertMapper;
 import com.vision.camera.entity.Camera;
@@ -11,7 +12,9 @@ import com.vision.inference.entity.InferenceRecord;
 import com.vision.inference.mapper.DetectionMapper;
 import com.vision.inference.mapper.InferenceMapper;
 import com.vision.model.entity.Model;
+import com.vision.model.entity.ModelNodeDeployment;
 import com.vision.model.service.InferenceClient;
+import com.vision.model.service.ModelService;
 import com.vision.node.service.NodeRouter;
 import com.vision.storage.StorageService;
 import com.vision.task.entity.MonitorTask;
@@ -52,6 +55,8 @@ public class TaskInferencePipeline {
     private final TaskConditionEvaluator conditionEvaluator;
     private final TaskCallbackService callbackService;
     private final NodeRouter nodeRouter;
+    private final ModelService modelService;
+    private final ObjectMapper objectMapper;
 
     @Value("${vision.capture.ffmpeg-path:ffmpeg}")
     private String ffmpegPath;
@@ -70,34 +75,52 @@ public class TaskInferencePipeline {
         String taskId = task.getId();
         String cameraId = camera.getId();
 
-        log.debug("开始任务推理: taskId={}, cameraId={}, modelId={}", taskId, cameraId, model.getId());
+        log.info("▶ 开始任务推理: taskId={}, taskName={}, cameraId={}, modelId={}",
+                taskId, task.getName(), cameraId, model.getId());
 
         Path tempFile = null;
+        long startTime = System.currentTimeMillis();
 
         try {
             // 1. 抓帧
+            long stepStart = System.currentTimeMillis();
             tempFile = captureFrame(camera);
             if (tempFile == null) {
+                log.warn("✗ 抓帧失败，终止管道: taskId={}, cameraId={}, streamUrl={}",
+                        taskId, cameraId, camera.getStreamUrl());
                 return;
             }
+            log.info("  [1/8] 抓帧完成: cameraId={}, 耗时={}ms, 文件={}",
+                    cameraId, System.currentTimeMillis() - stepStart, tempFile.getFileName());
 
             // 2. 上传图片
+            stepStart = System.currentTimeMillis();
             String imageUrl = uploadImage(tempFile, cameraId);
             if (imageUrl == null) {
+                log.warn("✗ 上传图片失败，终止管道: taskId={}, cameraId={}", taskId, cameraId);
                 return;
             }
+            log.info("  [2/8] 图片上传完成: 耗时={}ms, url={}",
+                    System.currentTimeMillis() - stepStart, imageUrl);
 
             // 3. 选择推理节点并调用
+            stepStart = System.currentTimeMillis();
             Map<String, Object> inferenceResult = performInference(task, model, imageUrl);
             if (inferenceResult == null) {
+                log.warn("✗ 推理失败，终止管道: taskId={}, modelId={}", taskId, model.getId());
                 return;
             }
+            log.info("  [3/8] 推理完成: 耗时={}ms, 检测数={}",
+                    System.currentTimeMillis() - stepStart,
+                    inferenceResult.get("objects") instanceof List ? ((List<?>) inferenceResult.get("objects")).size() : 0);
 
             // 4. 保存推理记录
             InferenceRecord record = saveInferenceRecord(task, camera, model, imageUrl, inferenceResult);
+            log.info("  [4/8] 推理记录已保存: recordId={}", record.getId());
 
             // 5. 保存检测结果
             List<Detection> detections = saveDetections(record.getId(), inferenceResult);
+            log.info("  [5/8] 检测结果已保存: detectionCount={}", detections.size());
 
             // 6. 更新任务推理统计
             monitorTaskMapper.incrementInference(taskId, LocalDateTime.now());
@@ -107,6 +130,7 @@ public class TaskInferencePipeline {
 
             // 8. 条件评估
             List<Detection> matchedDetections = conditionEvaluator.evaluate(detections, task, cameraId);
+            log.info("  [6-8/8] 条件评估完成: 匹配检测数={}", matchedDetections.size());
 
             if (!matchedDetections.isEmpty()) {
                 // 9. 创建告警
@@ -129,6 +153,10 @@ public class TaskInferencePipeline {
             }
 
             log.debug("任务推理完成: taskId={}, cameraId={}, recordId={}", taskId, cameraId, record.getId());
+
+            long totalMs = System.currentTimeMillis() - startTime;
+            log.info("◼ 任务推理完成: taskId={}, cameraId={}, 总耗时={}ms, 告警={}",
+                    taskId, cameraId, totalMs, !matchedDetections.isEmpty() ? "是" : "否");
 
         } catch (Exception e) {
             log.error("任务推理异常: taskId={}, cameraId={}", taskId, cameraId, e);
@@ -215,9 +243,10 @@ public class TaskInferencePipeline {
             log.warn("所有指定节点均不可用: taskId={}", task.getId());
         }
 
-        // 使用模型绑定的节点
-        if (model.getNodeId() != null) {
-            return model.getNodeId();
+        // 使用模型已部署的节点
+        ModelNodeDeployment deployment = modelService.findLoadedDeployment(model.getId());
+        if (deployment != null) {
+            return deployment.getNodeId();
         }
 
         return null;
@@ -233,7 +262,12 @@ public class TaskInferencePipeline {
         record.setThumbnailUrl(imageUrl);
         record.setOriginalImageUrl(imageUrl);
         record.setModelName(model.getName());
-        record.setRawJson(result.toString());
+        try {
+            record.setRawJson(objectMapper.writeValueAsString(result));
+        } catch (Exception e) {
+            record.setRawJson("{}");
+            log.warn("序列化推理结果失败", e);
+        }
         record.setAlertStatus("normal");
         record.setCreatedAt(LocalDateTime.now());
 

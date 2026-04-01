@@ -1,6 +1,7 @@
 package com.vision.rule.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.vision.common.handler.JsonbTypeHandler;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
  * 对应表: rule
  */
 @Data
-@TableName("rule")
+@TableName(value = "rule", autoResultMap = true)
 public class Rule {
 
     /**
@@ -63,6 +64,7 @@ public class Rule {
     /**
      * 动作配置 (JSONB)
      */
+    @TableField(typeHandler = JsonbTypeHandler.class)
     private String actions;
 
     /**

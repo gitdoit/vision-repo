@@ -13,8 +13,8 @@ export function loadModel(id: string, device: string = 'cpu', deviceName?: strin
   return client.post(`/models/${encodeURIComponent(id)}/load`, null, { params: { device, deviceName, nodeId } })
 }
 
-export function unloadModel(id: string) {
-  return client.post(`/models/${encodeURIComponent(id)}/unload`)
+export function unloadModel(id: string, nodeId?: string) {
+  return client.post(`/models/${encodeURIComponent(id)}/unload`, null, { params: nodeId ? { nodeId } : undefined })
 }
 
 export function getDeviceInfo(nodeId: string) {

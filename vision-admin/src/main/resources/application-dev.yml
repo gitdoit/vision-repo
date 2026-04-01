@@ -15,19 +15,35 @@ vision:
     working-dir: ../vision-inference
 
   storage:
-    type: local
+    type: minio
     local:
       base-path: ./data/files
       base-url: http://localhost:26330/files
+    minio:
+      endpoint: http://10.5.5.105:39050
+      access-key: admin
+      secret-key: gscitysfy
+      bucket: vision
 
   capture:
     temp-dir: ./tmp/capture
+    ffmpeg-path: D:/tools/ffmpeg/ffmpeg-8.1-full_build/bin/ffmpeg.exe
 
 # 日志
 logging:
   level:
     com.vision: DEBUG
-    com.baomidou.mybatisplus: DEBUG
+    com.vision.task: INFO
+    # 关闭 mapper SQL 日志
+    com.vision.inference.mapper: INFO
+    com.vision.camera.mapper: INFO
+    com.vision.alert.mapper: INFO
+    com.vision.model.mapper: INFO
+    com.vision.rule.mapper: INFO
+    com.vision.task.mapper: INFO
+    com.vision.capture.mapper: INFO
+    com.vision.node.mapper: INFO
+    com.vision.dashboard.mapper: INFO
   file:
     name: ./logs/vision-admin.log
   logback:

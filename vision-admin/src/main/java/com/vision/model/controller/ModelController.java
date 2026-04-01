@@ -100,12 +100,18 @@ public class ModelController {
     }
 
     /**
-     * 卸载模型
+     * 卸载模型（从指定节点或所有节点）
      */
     @PostMapping("/{id}/unload")
-    public R<Void> unloadModel(@PathVariable String id) {
-        log.info("卸载模型: id={}", id);
-        modelService.unloadModel(id);
+    public R<Void> unloadModel(
+            @PathVariable String id,
+            @RequestParam(required = false) String nodeId) {
+        log.info("卸载模型: id={}, nodeId={}", id, nodeId);
+        if (nodeId != null && !nodeId.isBlank()) {
+            modelService.unloadModel(id, nodeId);
+        } else {
+            modelService.unloadModelAll(id);
+        }
         return R.ok();
     }
 

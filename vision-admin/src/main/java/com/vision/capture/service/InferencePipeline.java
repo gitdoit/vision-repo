@@ -1,5 +1,6 @@
 package com.vision.capture.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vision.alert.entity.Alert;
 import com.vision.alert.mapper.AlertMapper;
 import com.vision.alert.service.AlertPushService;
@@ -11,8 +12,10 @@ import com.vision.inference.entity.InferenceRecord;
 import com.vision.inference.mapper.DetectionMapper;
 import com.vision.inference.mapper.InferenceMapper;
 import com.vision.model.entity.Model;
+import com.vision.model.entity.ModelNodeDeployment;
 import com.vision.model.mapper.ModelMapper;
 import com.vision.model.service.InferenceClient;
+import com.vision.model.service.ModelService;
 import com.vision.node.service.NodeRouter;
 import com.vision.rule.entity.Rule;
 import com.vision.rule.entity.RuleCondition;
@@ -56,6 +59,8 @@ public class InferencePipeline {
     private final AlertMapper alertMapper;
     private final AlertPushService alertPushService;
     private final ModelMapper modelMapper;
+    private final ModelService modelService;
+    private final ObjectMapper objectMapper;
 
     @Value("${vision.capture.ffmpeg-path:ffmpeg}")
     private String ffmpegPath;
@@ -174,21 +179,25 @@ public class InferencePipeline {
      */
     private Map<String, Object> performInference(String imageUrl, Camera camera) {
         try {
-            // 查找第一个已加载的模型及其所在节点
-            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Model> wrapper =
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
-            wrapper.eq(Model::getStatus, "loaded")
-                   .isNotNull(Model::getNodeId)
-                   .last("LIMIT 1");
-            Model loadedModel = modelMapper.selectOne(wrapper);
+            // 查找第一个有 loaded 部署的模型
+            List<Model> models = modelMapper.selectList(null);
+            ModelNodeDeployment deployment = null;
+            Model loadedModel = null;
+            for (Model m : models) {
+                deployment = modelService.findLoadedDeployment(m.getId());
+                if (deployment != null) {
+                    loadedModel = m;
+                    break;
+                }
+            }
 
-            if (loadedModel == null) {
+            if (loadedModel == null || deployment == null) {
                 log.warn("没有已加载的模型，无法推理: cameraId={}", camera.getId());
                 return null;
             }
 
             Map<String, Object> result = inferenceClient.predict(
-                    loadedModel.getNodeId(), imageUrl, loadedModel.getId(), BigDecimal.valueOf(0.5));
+                    deployment.getNodeId(), imageUrl, loadedModel.getId(), BigDecimal.valueOf(0.5));
 
             log.debug("推理完成: cameraId={}, result={}", camera.getId(), result);
             return result;
@@ -209,7 +218,11 @@ public class InferencePipeline {
         record.setBusinessType(camera.getBusinessLine());
         record.setThumbnailUrl(imageUrl);
         record.setOriginalImageUrl(imageUrl);
-        record.setRawJson(inferenceResult.toString());
+        try {
+            record.setRawJson(objectMapper.writeValueAsString(inferenceResult));
+        } catch (Exception e) {
+            record.setRawJson("{}");
+        }
         record.setCreatedAt(LocalDateTime.now());
 
         // 解析推理结果

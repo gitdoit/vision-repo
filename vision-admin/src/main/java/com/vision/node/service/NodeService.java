@@ -7,8 +7,10 @@ import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
 import com.vision.node.dto.*;
 import com.vision.node.entity.InferenceNode;
+import com.vision.node.event.NodeOnlineEvent;
 import com.vision.node.mapper.InferenceNodeMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,12 +27,14 @@ import java.util.stream.Collectors;
 public class NodeService {
 
     private final InferenceNodeMapper nodeMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 运行时信息缓存: nodeId → NodeRuntimeInfo, TTL 60s */
     private final Cache<String, NodeRuntimeInfo> runtimeCache;
 
-    public NodeService(InferenceNodeMapper nodeMapper) {
+    public NodeService(InferenceNodeMapper nodeMapper, ApplicationEventPublisher eventPublisher) {
         this.nodeMapper = nodeMapper;
+        this.eventPublisher = eventPublisher;
         this.runtimeCache = Caffeine.newBuilder()
                 .expireAfterWrite(60, TimeUnit.SECONDS)
                 .maximumSize(100)
@@ -62,6 +66,7 @@ public class NodeService {
             existing.setRegisteredAt(LocalDateTime.now());
             nodeMapper.updateById(existing);
             log.info("节点重新注册: id={}, name={}, address={}:{}", existing.getId(), dto.getNodeName(), dto.getHost(), dto.getPort());
+            eventPublisher.publishEvent(new NodeOnlineEvent(this, existing.getId()));
             return NodeVO.fromEntity(existing);
         }
 
@@ -88,6 +93,7 @@ public class NodeService {
 
         nodeMapper.insert(node);
         log.info("节点注册成功: id={}, name={}, address={}:{}", node.getId(), dto.getNodeName(), dto.getHost(), dto.getPort());
+        eventPublisher.publishEvent(new NodeOnlineEvent(this, node.getId()));
         return NodeVO.fromEntity(node);
     }
 

@@ -94,4 +94,24 @@ public class LocalStorageService implements StorageService {
         }
         return basePath.resolve(relativePath).toAbsolutePath().toString();
     }
+
+    @Override
+    public byte[] readBytes(String url) {
+        String filePath = resolveToFilePath(url);
+        Path path = Path.of(filePath);
+        if (!Files.exists(path)) {
+            throw new RuntimeException("文件不存在: " + filePath);
+        }
+        try {
+            return Files.readAllBytes(path);
+        } catch (IOException e) {
+            throw new RuntimeException("读取文件失败: " + filePath, e);
+        }
+    }
+
+    @Override
+    public String extractFileName(String url) {
+        String filePath = resolveToFilePath(url);
+        return Path.of(filePath).getFileName().toString();
+    }
 }

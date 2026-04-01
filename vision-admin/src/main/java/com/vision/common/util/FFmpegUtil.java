@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -21,15 +23,15 @@ public class FFmpegUtil {
     private static final int TIMEOUT_SECONDS = 30;
 
     /**
-     * 从 RTSP 流抓取一帧图片
+     * 从视频流抓取一帧图片（支持 RTSP / HTTP-FLV / WS-FLV）
      *
      * @param ffmpegPath FFmpeg 可执行文件路径
-     * @param rtspUrl    RTSP 流地址
+     * @param streamUrl  视频流地址（rtsp:// / http:// / ws:// 等）
      * @param outputPath 输出图片路径
      * @return 是否成功
      */
-    public static boolean captureFrame(String ffmpegPath, String rtspUrl, String outputPath) {
-        log.debug("开始抓帧: rtspUrl={}, outputPath={}", rtspUrl, outputPath);
+    public static boolean captureFrame(String ffmpegPath, String streamUrl, String outputPath) {
+        log.debug("开始抓帧: streamUrl={}, outputPath={}", streamUrl, outputPath);
 
         // 确保输出目录存在
         File outputFile = new File(outputPath);
@@ -38,15 +40,34 @@ public class FFmpegUtil {
             parentDir.mkdirs();
         }
 
-        ProcessBuilder processBuilder = new ProcessBuilder(
-                ffmpegPath,
-                "-rtsp_transport", "tcp",
-                "-i", rtspUrl,
-                "-frames:v", "1",
-                "-f", "image2",
-                "-y",  // 覆盖已存在的文件
-                outputPath
-        );
+        // 根据协议构建不同的 FFmpeg 命令参数
+        String effectiveUrl = streamUrl;
+        List<String> command = new ArrayList<>();
+        command.add(ffmpegPath);
+
+        String lower = streamUrl.toLowerCase();
+        if (lower.startsWith("rtsp://")) {
+            // RTSP 流：使用 TCP 传输
+            command.add("-rtsp_transport");
+            command.add("tcp");
+        } else if (lower.startsWith("ws://") || lower.startsWith("wss://")) {
+            // WebSocket FLV 流：FFmpeg 不支持 ws://，转换为 http:// / https://
+            effectiveUrl = streamUrl.replaceFirst("(?i)^wss://", "https://")
+                                    .replaceFirst("(?i)^ws://", "http://");
+            log.debug("WebSocket 流转换为 HTTP: {} -> {}", streamUrl, effectiveUrl);
+        }
+        // http:// / https:// 流无需额外参数
+
+        command.add("-i");
+        command.add(effectiveUrl);
+        command.add("-frames:v");
+        command.add("1");
+        command.add("-f");
+        command.add("image2");
+        command.add("-y");  // 覆盖已存在的文件
+        command.add(outputPath);
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
 
         processBuilder.redirectErrorStream(true);
 
@@ -68,7 +89,7 @@ public class FFmpegUtil {
             boolean finished = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             if (!finished) {
-                log.warn("FFmpeg 抓帧超时: rtspUrl={}", rtspUrl);
+                log.warn("FFmpeg 抓帧超时: streamUrl={}", streamUrl);
                 process.destroyForcibly();
                 return false;
             }
@@ -85,20 +106,20 @@ public class FFmpegUtil {
                     return false;
                 }
             } else {
-                log.warn("FFmpeg 抓帧失败: exitCode={}, rtspUrl={}, output={}",
-                        exitCode, rtspUrl, output);
+                log.warn("FFmpeg 抓帧失败: exitCode={}, streamUrl={}, output={}",
+                        exitCode, streamUrl, output);
                 return false;
             }
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("FFmpeg 抓帧被中断: rtspUrl={}", rtspUrl, e);
+            log.warn("FFmpeg 抓帧被中断: streamUrl={}", streamUrl, e);
             if (process != null) {
                 process.destroyForcibly();
             }
             return false;
         } catch (Exception e) {
-            log.error("FFmpeg 抓帧异常: rtspUrl={}", rtspUrl, e);
+            log.error("FFmpeg 抓帧异常: streamUrl={}", streamUrl, e);
             if (process != null) {
                 process.destroyForcibly();
             }
@@ -111,14 +132,14 @@ public class FFmpegUtil {
     }
 
     /**
-     * 从 RTSP 流抓取一帧图片（使用默认 ffmpeg 路径）
+     * 从视频流抓取一帧图片（使用默认 ffmpeg 路径）
      *
-     * @param rtspUrl    RTSP 流地址
+     * @param streamUrl  视频流地址
      * @param outputPath 输出图片路径
      * @return 是否成功
      */
-    public static boolean captureFrame(String rtspUrl, String outputPath) {
-        return captureFrame("ffmpeg", rtspUrl, outputPath);
+    public static boolean captureFrame(String streamUrl, String outputPath) {
+        return captureFrame("ffmpeg", streamUrl, outputPath);
     }
 
     /**

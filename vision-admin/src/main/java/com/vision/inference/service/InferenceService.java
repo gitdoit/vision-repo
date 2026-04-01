@@ -16,8 +16,10 @@ import com.vision.inference.mapper.InferenceMapper;
 import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
 import com.vision.model.entity.Model;
+import com.vision.model.entity.ModelNodeDeployment;
 import com.vision.model.mapper.ModelMapper;
 import com.vision.model.service.InferenceClient;
+import com.vision.model.service.ModelService;
 import com.vision.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,7 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
     private final DetectionMapper detectionMapper;
     private final CameraMapper cameraMapper;
     private final ModelMapper modelMapper;
+    private final ModelService modelService;
     private final InferenceClient inferenceClient;
     private final StorageService storageService;
 
@@ -62,7 +65,8 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
         if (model == null) {
             throw new BizException("模型不存在");
         }
-        if (!"loaded".equals(model.getStatus())) {
+        ModelNodeDeployment deployment = modelService.findLoadedDeployment(modelId);
+        if (deployment == null) {
             throw new BizException("模型未加载，请先加载模型");
         }
 
@@ -79,10 +83,7 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
         String filePath = storageService.resolveToFilePath(imageUrl);
 
         // 4. 调用 Python 推理服务（路由到模型所在节点）
-        String nodeId = model.getNodeId();
-        if (nodeId == null || nodeId.isBlank()) {
-            throw new BizException("模型未绑定推理节点");
-        }
+        String nodeId = deployment.getNodeId();
         String taskType = model.getTaskType() != null ? model.getTaskType() : "detect";
         Map<String, Object> pythonResult = inferenceClient.predict(nodeId, filePath, modelId, confidenceThreshold, taskType);
 
@@ -170,7 +171,6 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
                 detection.setBbox(detectionVO.getBbox());
                 detection.setCount(detectionVO.getCount());
                 detection.setAttributes(detectionVO.getAttributes());
-                detection.setCreatedAt(LocalDateTime.now());
                 detectionMapper.insert(detection);
             }
         }

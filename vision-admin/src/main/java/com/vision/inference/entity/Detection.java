@@ -1,6 +1,7 @@
 package com.vision.inference.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.vision.common.handler.JsonbTypeHandler;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
  * 对应表: detection
  */
 @Data
-@TableName("detection")
+@TableName(value = "detection", autoResultMap = true)
 public class Detection {
 
     /**
@@ -48,11 +49,6 @@ public class Detection {
     /**
      * 额外属性 (JSONB)
      */
+    @TableField(typeHandler = JsonbTypeHandler.class)
     private String attributes;
-
-    /**
-     * 创建时间
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
 }

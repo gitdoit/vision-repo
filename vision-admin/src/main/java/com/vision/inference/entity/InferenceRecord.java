@@ -1,6 +1,7 @@
 package com.vision.inference.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.vision.common.handler.JsonbTypeHandler;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
  * 对应表: inference_record
  */
 @Data
-@TableName("inference_record")
+@TableName(value = "inference_record", autoResultMap = true)
 public class InferenceRecord {
 
     /**
@@ -68,6 +69,7 @@ public class InferenceRecord {
     /**
      * 完整推理原始结果 (JSONB)
      */
+    @TableField(typeHandler = JsonbTypeHandler.class)
     private String rawJson;
 
     /**
