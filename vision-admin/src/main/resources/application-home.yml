@@ -1,0 +1,51 @@
+# 开发环境配置
+
+spring:
+  datasource:
+#    url: jdbc:postgresql://10.5.5.104:25432/gscsfy_l3_gasdb_v1?currentSchema=vision
+#    username: postgres
+#    password: 3a07eb49
+    url: jdbc:postgresql://127.0.0.1:49153/vision?currentSchema=vision
+    username: postgres
+    password: postgrespw
+# Vision 开发环境配置
+vision:
+  inference:
+    service-url: http://localhost:26331
+
+  storage:
+    type: minio
+    local:
+      base-path: ./data/files
+      base-url: http://localhost:26330/files
+    minio:
+      endpoint: http://10.5.5.105:39050
+      access-key: admin
+      secret-key: gscitysfy
+      bucket: vision
+
+  capture:
+    temp-dir: ./tmp/capture
+    ffmpeg-path: D:/tools/ffmpeg/ffmpeg-8.1-full_build/bin/ffmpeg.exe
+
+# 日志
+logging:
+  level:
+    com.vision: DEBUG
+    com.vision.task: INFO
+    # 关闭 mapper SQL 日志
+    com.vision.inference.mapper: INFO
+    com.vision.camera.mapper: INFO
+    com.vision.alert.mapper: INFO
+    com.vision.model.mapper: INFO
+    com.vision.rule.mapper: INFO
+    com.vision.task.mapper: INFO
+    com.vision.capture.mapper: INFO
+    com.vision.node.mapper: INFO
+    com.vision.dashboard.mapper: INFO
+  file:
+    name: ./logs/vision-admin.log
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 7
