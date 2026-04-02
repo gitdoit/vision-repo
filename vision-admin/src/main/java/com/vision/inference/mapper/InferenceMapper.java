@@ -22,6 +22,7 @@ public interface InferenceMapper extends BaseMapper<InferenceRecord> {
             @Param("endTime") LocalDateTime endTime,
             @Param("cameraId") String cameraId,
             @Param("alertStatus") String alertStatus,
+            @Param("taskId") String taskId,
             @Param("size") Integer size,
             @Param("offset") Integer offset);
 
@@ -32,7 +33,8 @@ public interface InferenceMapper extends BaseMapper<InferenceRecord> {
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime,
             @Param("cameraId") String cameraId,
-            @Param("alertStatus") String alertStatus);
+            @Param("alertStatus") String alertStatus,
+            @Param("taskId") String taskId);
 
     /**
      * 统计时间范围内的推理次数

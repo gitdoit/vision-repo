@@ -337,6 +337,15 @@ export interface InferenceNode {
   runtimeInfo?: NodeRuntimeInfo
 }
 
+/** 任务关联的推理节点简要信息 */
+export interface TaskNodeInfo {
+  nodeId: string
+  nodeName: string
+  host: string
+  port: number
+  status: string
+}
+
 /** 监测任务 */
 export interface MonitorTask {
   id: string
@@ -347,6 +356,15 @@ export interface MonitorTask {
   groupName?: string
   modelId: string
   modelName?: string
+  /** 模型分类名称列表 */
+  modelClassNames?: string[]
+  /** 模型输入分辨率 */
+  modelInputResolution?: string
+  /** 模型任务类型 */
+  modelTaskType?: string
+  /** 关联推理节点信息 */
+  nodes?: TaskNodeInfo[]
+  nodeIds?: string
   status: 'running' | 'stopped' | 'error'
   captureFrequency?: string
   scheduleStartTime?: string
@@ -364,6 +382,7 @@ export interface MonitorTask {
   lastInferenceTime?: string
   lastAlertTime?: string
   createdAt: string
+  updatedAt?: string
 }
 
 /** 监测任务表单（创建/编辑用） */

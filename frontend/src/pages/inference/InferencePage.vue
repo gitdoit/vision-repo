@@ -1,9 +1,9 @@
 <template>
-  <div class="space-y-4">
-    <p class="text-sm text-on-surface-variant">检索全量推理结果及告警详情记录</p>
+  <div class="flex flex-col h-full gap-4 overflow-hidden">
+    <p class="text-sm text-on-surface-variant shrink-0">检索全量推理结果及告警详情记录</p>
 
     <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-3 rounded-xl bg-bg-card px-4 py-3">
+    <div class="flex flex-wrap items-center gap-3 rounded-xl bg-bg-card px-4 py-3 shrink-0">
       <div class="flex gap-1">
         <button
           v-for="range in timeRanges"
@@ -37,7 +37,7 @@
     </div>
 
     <!-- Table -->
-    <div class="rounded-xl bg-bg-card">
+    <div class="rounded-xl bg-bg-card flex-1 min-h-0 flex flex-col">
       <n-data-table
         :columns="columns"
         :data="inferenceStore.records"
@@ -47,8 +47,8 @@
         :row-props="rowProps"
         size="small"
         :pagination="false"
-        :max-height="'calc(100vh - 340px)'"
         flex-height
+        class="flex-1 min-h-0"
       />
       <div class="flex items-center justify-between px-4 py-3 border-t border-outline-variant/10">
         <span class="text-xs text-on-surface-variant">共 {{ inferenceStore.total }} 条记录</span>
@@ -64,6 +64,15 @@
         />
       </div>
     </div>
+
+    <!-- Live Video Modal -->
+    <n-modal v-model:show="videoModalVisible" preset="card" :title="videoModalTitle" style="width: 720px" :bordered="false" :segmented="{ content: true }">
+      <FlvPlayer v-if="videoModalVisible && videoStreamUrl" :url="videoStreamUrl" />
+      <div v-else class="flex items-center justify-center py-12 text-on-surface-variant text-sm">
+        <Icon icon="mdi:video-off" class="text-2xl mr-2 opacity-50" />
+        该摄像头暂无视频流地址
+      </div>
+    </n-modal>
 
     <!-- Detail Drawer -->
     <n-drawer v-model:show="drawerVisible" :width="540" placement="right">
@@ -147,11 +156,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, h } from 'vue'
-import { NSelect, NInput, NSlider, NButton, NTag, NDataTable, NDrawer, NDrawerContent, NPagination, NProgress } from 'naive-ui'
+import { NSelect, NInput, NSlider, NButton, NTag, NDataTable, NDrawer, NDrawerContent, NPagination, NProgress, NModal, NTooltip } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { Icon } from '@iconify/vue'
 import { useInferenceStore } from '@/stores/inference'
 import { exportInferenceCsv, exportInferenceExcel } from '@/api/modules/inference'
+import { getCamera } from '@/api/modules/camera'
+import FlvPlayer from '@/components/FlvPlayer.vue'
 import type { InferenceRecord, Detection } from '@/types'
 
 const inferenceStore = useInferenceStore()
@@ -171,6 +182,23 @@ const selectedRecord = ref<InferenceRecord | null>(null)
 const imageTab = ref('原始画面')
 const annotationCanvas = ref<HTMLCanvasElement | null>(null)
 const showJson = ref(false)
+
+// --- Live Video ---
+const videoModalVisible = ref(false)
+const videoStreamUrl = ref('')
+const videoModalTitle = ref('实时视频')
+
+async function openLiveVideo(row: InferenceRecord) {
+  videoModalTitle.value = `实时视频 — ${row.cameraName || row.cameraId}`
+  videoStreamUrl.value = ''
+  videoModalVisible.value = true
+  try {
+    const camera = await getCamera(row.cameraId) as unknown as { streamUrl?: string }
+    videoStreamUrl.value = camera?.streamUrl || ''
+  } catch {
+    videoStreamUrl.value = ''
+  }
+}
 
 const detailImageUrl = computed(() => {
   if (!selectedRecord.value) return ''
@@ -382,6 +410,26 @@ const columns = computed<DataTableColumns<InferenceRecord>>(() => [
     sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     render(row) {
       return h('span', { class: 'text-xs' }, row.createdAt)
+    },
+  },
+  {
+    key: 'actions',
+    title: '操作',
+    width: 60,
+    fixed: 'right',
+    render(row) {
+      return h(NTooltip, { trigger: 'hover' }, {
+        trigger: () => h(NButton, {
+          size: 'tiny',
+          quaternary: true,
+          circle: true,
+          onClick: (e: Event) => {
+            e.stopPropagation()
+            openLiveVideo(row)
+          },
+        }, { icon: () => h(Icon, { icon: 'mdi:video-outline', class: 'text-sm' }) }),
+        default: () => '查看实时视频',
+      })
     },
   },
 ])

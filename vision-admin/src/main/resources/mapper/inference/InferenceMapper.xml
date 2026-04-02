@@ -36,6 +36,9 @@
             <if test="alertStatus != null and alertStatus != ''">
                 AND alert_status = #{alertStatus}
             </if>
+            <if test="taskId != null and taskId != ''">
+                AND task_id = #{taskId}
+            </if>
         </where>
         ORDER BY created_at DESC
         LIMIT #{size} OFFSET #{offset}
@@ -63,6 +66,9 @@
             </if>
             <if test="alertStatus != null and alertStatus != ''">
                 AND alert_status = #{alertStatus}
+            </if>
+            <if test="taskId != null and taskId != ''">
+                AND task_id = #{taskId}
             </if>
         </where>
     </select>

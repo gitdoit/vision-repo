@@ -5,6 +5,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 监测任务响应 VO
@@ -59,6 +60,18 @@ public class MonitorTaskVO {
     private String callbackHeaders;
 
     private String nodeIds;
+
+    /** 模型分类名称列表 */
+    private List<String> modelClassNames;
+
+    /** 模型输入分辨率 */
+    private String modelInputResolution;
+
+    /** 模型任务类型 (detect/segment/classify/pose) */
+    private String modelTaskType;
+
+    /** 关联推理节点简要信息 */
+    private List<TaskNodeInfo> nodes;
 
     /** 累计分析次数 */
     private Long totalInference;

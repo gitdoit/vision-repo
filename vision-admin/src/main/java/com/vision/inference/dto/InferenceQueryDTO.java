@@ -36,6 +36,11 @@ public class InferenceQueryDTO {
     private String alertType;
 
     /**
+     * 监测任务ID
+     */
+    private String taskId;
+
+    /**
      * 最小置信度
      */
     private Double minConfidence;

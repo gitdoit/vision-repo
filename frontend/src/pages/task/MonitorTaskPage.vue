@@ -43,75 +43,124 @@
         <p class="mt-3 text-sm">暂无监测任务</p>
       </div>
 
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div
           v-for="task in filteredTasks"
           :key="task.id"
           class="rounded-xl bg-bg-card p-5 transition-shadow hover:shadow-md"
         >
-          <!-- Header: Name & Status -->
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
+          <!-- Row 1: Header — Name + Status + Created Time -->
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2 min-w-0">
               <span
-                class="inline-block h-2.5 w-2.5 rounded-full"
+                class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                 :class="statusDotClass(task.status)"
               />
-              <h4 class="text-sm font-semibold">{{ task.name }}</h4>
+              <h4 class="text-sm font-semibold truncate">{{ task.name }}</h4>
+              <n-tag size="tiny" :bordered="false" :type="statusTagType(task.status)">
+                {{ statusLabel(task.status) }}
+              </n-tag>
             </div>
-            <n-tag size="tiny" :bordered="false" :type="statusTagType(task.status)">
-              {{ statusLabel(task.status) }}
-            </n-tag>
+            <span class="text-[11px] text-on-surface-variant/60 shrink-0 ml-2">{{ formatTime(task.createdAt) }}</span>
           </div>
 
-          <!-- Description -->
-          <p v-if="task.description" class="text-xs text-on-surface-variant mb-3 line-clamp-2">
+          <!-- Row 2: Description -->
+          <p v-if="task.description" class="text-xs text-on-surface-variant mb-3 line-clamp-1">
             {{ task.description }}
           </p>
 
-          <!-- Info Grid -->
-          <div class="grid grid-cols-2 gap-y-2 text-xs text-on-surface-variant">
+          <!-- Row 3: Model Section -->
+          <div class="mb-3 rounded-lg bg-bg-void/50 px-3 py-2">
+            <div class="flex items-center gap-2 mb-1.5">
+              <Icon icon="mdi:brain" class="text-primary text-sm shrink-0" />
+              <span class="text-xs font-medium text-on-surface">{{ task.modelName || '-' }}</span>
+              <n-tag v-if="task.modelTaskType" size="tiny" :bordered="false" class="!text-[10px]">
+                {{ taskTypeLabel(task.modelTaskType) }}
+              </n-tag>
+              <span v-if="task.modelInputResolution" class="text-[10px] text-on-surface-variant/60 ml-auto">
+                {{ task.modelInputResolution }}
+              </span>
+            </div>
+            <div v-if="task.modelClassNames && task.modelClassNames.length > 0" class="flex flex-wrap gap-1">
+              <n-tag
+                v-for="cls in task.modelClassNames.slice(0, 6)"
+                :key="cls"
+                size="tiny"
+                :bordered="false"
+                class="!text-[10px] !bg-primary/8 !text-primary"
+              >
+                {{ cls }}
+              </n-tag>
+              <n-tag
+                v-if="task.modelClassNames.length > 6"
+                size="tiny"
+                :bordered="false"
+                class="!text-[10px]"
+              >
+                +{{ task.modelClassNames.length - 6 }}
+              </n-tag>
+            </div>
+          </div>
+
+          <!-- Row 4: Info Grid — Group, Frequency, Node, Alert Level -->
+          <div class="grid grid-cols-4 gap-x-3 gap-y-2 text-xs text-on-surface-variant mb-3">
             <div>
-              <span class="text-on-surface-variant/60">摄像头分组</span>
-              <div class="mt-0.5 font-medium text-on-surface">{{ task.groupName || '-' }}</div>
+              <span class="text-on-surface-variant/60 text-[10px]">摄像头分组</span>
+              <div class="mt-0.5 font-medium text-on-surface truncate">{{ task.groupName || '-' }}</div>
             </div>
             <div>
-              <span class="text-on-surface-variant/60">关联模型</span>
-              <div class="mt-0.5 font-medium text-on-surface">{{ task.modelName || '-' }}</div>
+              <span class="text-on-surface-variant/60 text-[10px]">抓图频率</span>
+              <div class="mt-0.5 font-medium text-on-surface">{{ frequencyLabel(task.captureFrequency) }}</div>
             </div>
             <div>
-              <span class="text-on-surface-variant/60">抓图频率</span>
-              <div class="mt-0.5">{{ task.captureFrequency || '5min' }}</div>
+              <span class="text-on-surface-variant/60 text-[10px]">推理节点</span>
+              <div class="mt-0.5 font-medium text-on-surface truncate">
+                <template v-if="task.nodes && task.nodes.length > 0">
+                  <n-tooltip trigger="hover">
+                    <template #trigger>
+                      <span class="cursor-default">{{ task.nodes[0].nodeName }}</span>
+                    </template>
+                    <div v-for="node in task.nodes" :key="node.nodeId" class="text-xs">
+                      {{ node.nodeName }} ({{ node.host }}:{{ node.port }})
+                      <n-tag size="tiny" :bordered="false" :type="node.status === 'online' ? 'success' : 'default'" class="ml-1">
+                        {{ node.status }}
+                      </n-tag>
+                    </div>
+                  </n-tooltip>
+                  <span v-if="task.nodes.length > 1" class="text-[10px] text-on-surface-variant/60"> +{{ task.nodes.length - 1 }}</span>
+                </template>
+                <span v-else class="text-on-surface-variant/60">自动调度</span>
+              </div>
             </div>
             <div>
-              <span class="text-on-surface-variant/60">告警级别</span>
+              <span class="text-on-surface-variant/60 text-[10px]">告警级别</span>
               <div class="mt-0.5">
                 <n-tag size="tiny" :bordered="false" :type="alertLevelType(task.alertLevel)">
-                  {{ task.alertLevel }}
+                  {{ alertLevelLabel(task.alertLevel) }}
                 </n-tag>
               </div>
             </div>
           </div>
 
-          <!-- Stats -->
-          <div class="mt-3 flex gap-4 border-t border-outline-variant/10 pt-3">
+          <!-- Row 5: Stats Bar -->
+          <div class="flex items-center gap-4 border-t border-outline-variant/10 pt-3 mb-3">
             <div class="text-xs">
-              <span class="text-on-surface-variant/60">推理次数</span>
-              <div class="text-sm font-semibold text-on-surface">{{ task.totalInference }}</div>
+              <span class="text-on-surface-variant/60">推理</span>
+              <span class="ml-1 font-semibold text-on-surface">{{ task.totalInference }}</span>
             </div>
             <div class="text-xs">
-              <span class="text-on-surface-variant/60">告警次数</span>
-              <div class="text-sm font-semibold" :class="task.totalAlert > 0 ? 'text-red-400' : 'text-on-surface'">
+              <span class="text-on-surface-variant/60">告警</span>
+              <span class="ml-1 font-semibold" :class="task.totalAlert > 0 ? 'text-red-400' : 'text-on-surface'">
                 {{ task.totalAlert }}
-              </div>
+              </span>
             </div>
-            <div v-if="task.lastInferenceTime" class="text-xs ml-auto">
-              <span class="text-on-surface-variant/60">最后推理</span>
-              <div class="mt-0.5">{{ formatTime(task.lastInferenceTime) }}</div>
+            <div v-if="task.lastInferenceTime" class="text-xs ml-auto text-on-surface-variant/60">
+              最后推理 {{ formatTime(task.lastInferenceTime) }}
             </div>
           </div>
 
-          <!-- Actions -->
-          <div class="mt-3 flex gap-2">
+          <!-- Row 6: Actions -->
+          <div class="flex gap-2">
             <n-button
               v-if="task.status !== 'running'"
               size="tiny"
@@ -136,6 +185,10 @@
               <template #icon><Icon icon="mdi:pencil" /></template>
               编辑
             </n-button>
+            <n-button size="tiny" quaternary type="info" @click="openDetailDrawer(task)">
+              <template #icon><Icon icon="mdi:text-box-search-outline" /></template>
+              详情
+            </n-button>
             <n-button size="tiny" quaternary type="error" @click="handleDelete(task)">
               <template #icon><Icon icon="mdi:delete" /></template>
               删除
@@ -144,6 +197,178 @@
         </div>
       </div>
     </n-spin>
+
+    <!-- Detail Drawer -->
+    <n-drawer v-model:show="drawerVisible" :width="620" placement="right">
+      <n-drawer-content v-if="drawerTask" closable>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span
+              class="inline-block h-2.5 w-2.5 rounded-full"
+              :class="statusDotClass(drawerTask.status)"
+            />
+            <span class="font-semibold">{{ drawerTask.name }}</span>
+            <n-tag size="tiny" :bordered="false" :type="statusTagType(drawerTask.status)">
+              {{ statusLabel(drawerTask.status) }}
+            </n-tag>
+          </div>
+        </template>
+
+        <!-- Task Summary -->
+        <div class="space-y-4 mb-6">
+          <p v-if="drawerTask.description" class="text-xs text-on-surface-variant">{{ drawerTask.description }}</p>
+
+          <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-xs rounded-lg bg-bg-void/50 p-3">
+            <div>
+              <span class="text-on-surface-variant/60">摄像头分组</span>
+              <div class="mt-0.5 font-medium text-on-surface">{{ drawerTask.groupName || '-' }}</div>
+            </div>
+            <div>
+              <span class="text-on-surface-variant/60">关联模型</span>
+              <div class="mt-0.5 font-medium text-on-surface">{{ drawerTask.modelName || '-' }}</div>
+            </div>
+            <div>
+              <span class="text-on-surface-variant/60">模型类型</span>
+              <div class="mt-0.5">{{ taskTypeLabel(drawerTask.modelTaskType) || '-' }}</div>
+            </div>
+            <div>
+              <span class="text-on-surface-variant/60">输入分辨率</span>
+              <div class="mt-0.5">{{ drawerTask.modelInputResolution || '-' }}</div>
+            </div>
+            <div>
+              <span class="text-on-surface-variant/60">推理节点</span>
+              <div class="mt-0.5">
+                <template v-if="drawerTask.nodes && drawerTask.nodes.length > 0">
+                  <span v-for="(node, idx) in drawerTask.nodes" :key="node.nodeId">
+                    {{ node.nodeName }} ({{ node.host }})
+                    <span v-if="idx < drawerTask.nodes.length - 1">、</span>
+                  </span>
+                </template>
+                <span v-else class="text-on-surface-variant/60">自动调度</span>
+              </div>
+            </div>
+            <div>
+              <span class="text-on-surface-variant/60">抓图频率</span>
+              <div class="mt-0.5">{{ frequencyLabel(drawerTask.captureFrequency) }}</div>
+            </div>
+            <div>
+              <span class="text-on-surface-variant/60">告警级别</span>
+              <div class="mt-0.5">
+                <n-tag size="tiny" :bordered="false" :type="alertLevelType(drawerTask.alertLevel)">
+                  {{ alertLevelLabel(drawerTask.alertLevel) }}
+                </n-tag>
+              </div>
+            </div>
+            <div>
+              <span class="text-on-surface-variant/60">置信度阈值</span>
+              <div class="mt-0.5">{{ drawerTask.alertConfidence }}</div>
+            </div>
+            <div>
+              <span class="text-on-surface-variant/60">创建时间</span>
+              <div class="mt-0.5">{{ formatFullTime(drawerTask.createdAt) }}</div>
+            </div>
+            <div>
+              <span class="text-on-surface-variant/60">累计推理 / 告警</span>
+              <div class="mt-0.5">
+                <span class="font-medium">{{ drawerTask.totalInference }}</span>
+                <span class="mx-1 text-on-surface-variant/40">/</span>
+                <span class="font-medium" :class="drawerTask.totalAlert > 0 ? 'text-red-400' : ''">{{ drawerTask.totalAlert }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model class names in drawer -->
+          <div v-if="drawerTask.modelClassNames && drawerTask.modelClassNames.length > 0">
+            <span class="text-xs text-on-surface-variant/60">检测分类</span>
+            <div class="flex flex-wrap gap-1 mt-1">
+              <n-tag
+                v-for="cls in drawerTask.modelClassNames"
+                :key="cls"
+                size="tiny"
+                :bordered="false"
+                class="!text-[10px] !bg-primary/8 !text-primary"
+              >
+                {{ cls }}
+              </n-tag>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Inference Records -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold text-on-surface">最近推理记录</h4>
+            <span class="text-xs text-on-surface-variant/60">共 {{ drawerTotal }} 条</span>
+          </div>
+
+          <n-spin :show="drawerLoading">
+            <div v-if="drawerRecords.length === 0 && !drawerLoading" class="py-8 text-center text-on-surface-variant text-xs">
+              暂无推理记录
+            </div>
+
+            <div class="space-y-2">
+              <div
+                v-for="record in drawerRecords"
+                :key="record.id"
+                class="flex items-center gap-3 rounded-lg bg-bg-void/40 p-2.5"
+              >
+                <!-- Thumbnail -->
+                <div class="h-12 w-16 shrink-0 rounded overflow-hidden bg-bg-void flex items-center justify-center">
+                  <img v-if="record.thumbnailUrl" :src="record.thumbnailUrl" class="h-full w-full object-cover" alt="" />
+                  <Icon v-else icon="mdi:image-off" class="text-on-surface-variant/30 text-lg" />
+                </div>
+                <!-- Info -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-medium text-on-surface truncate">{{ record.cameraName || record.cameraId || '-' }}</span>
+                    <n-tag
+                      size="tiny"
+                      :bordered="false"
+                      :type="record.alertStatus === 'alert' ? 'error' : record.alertStatus === 'warning' ? 'warning' : 'default'"
+                    >
+                      {{ record.alertStatus === 'alert' ? '告警' : record.alertStatus === 'warning' ? '预警' : '正常' }}
+                    </n-tag>
+                  </div>
+                  <div class="flex items-center gap-2 text-[10px] text-on-surface-variant/60">
+                    <span v-if="record.avgConfidence != null">置信度 {{ (record.avgConfidence * 100).toFixed(0) }}%</span>
+                    <span v-if="record.inferenceTimeMs">· {{ record.inferenceTimeMs }}ms</span>
+                  </div>
+                  <div v-if="record.detections && record.detections.length > 0" class="flex flex-wrap gap-1 mt-1">
+                    <n-tag
+                      v-for="det in record.detections.slice(0, 4)"
+                      :key="det.label"
+                      size="tiny"
+                      :bordered="false"
+                      class="!text-[10px]"
+                    >
+                      {{ det.label }} ×{{ det.count }}
+                    </n-tag>
+                    <span v-if="record.detections.length > 4" class="text-[10px] text-on-surface-variant/40">+{{ record.detections.length - 4 }}</span>
+                  </div>
+                </div>
+                <!-- Time -->
+                <span class="text-[10px] text-on-surface-variant/60 shrink-0">{{ formatTime(record.createdAt) }}</span>
+              </div>
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="drawerTotal > 0" class="flex items-center justify-between pt-3 mt-3 border-t border-outline-variant/10">
+              <span class="text-[10px] text-on-surface-variant/60">{{ drawerTotal }} 条记录</span>
+              <n-pagination
+                v-model:page="drawerPage"
+                :item-count="drawerTotal"
+                :page-size="drawerPageSize"
+                :page-sizes="[10, 20, 50]"
+                show-size-picker
+                size="small"
+                @update:page="fetchDrawerRecords"
+                @update:page-size="handleDrawerPageSizeChange"
+              />
+            </div>
+          </n-spin>
+        </div>
+      </n-drawer-content>
+    </n-drawer>
 
     <!-- Create/Edit Modal -->
     <n-modal v-model:show="showModal" preset="card" :title="editingTask ? '编辑任务' : '新建监测任务'" :style="{ width: '640px' }">
@@ -275,6 +500,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import {
   NButton, NTag, NSpin, NSelect, NInput, NModal, NForm, NFormItem,
   NInputNumber, NDivider, NTimePicker, NCheckboxGroup, NCheckbox,
+  NDrawer, NDrawerContent, NPagination, NTooltip,
   useMessage, useDialog,
   type FormInst,
 } from 'naive-ui'
@@ -282,7 +508,8 @@ import { Icon } from '@iconify/vue'
 import { useTaskStore } from '@/stores/task'
 import { getCameraGroups } from '@/api/modules/camera'
 import { getModels } from '@/api/modules/model'
-import type { MonitorTask, MonitorTaskForm, CameraGroup, Model } from '@/types'
+import { getInferenceRecords } from '@/api/modules/inference'
+import type { MonitorTask, MonitorTaskForm, CameraGroup, Model, InferenceRecord } from '@/types'
 
 const taskStore = useTaskStore()
 const message = useMessage()
@@ -511,10 +738,81 @@ function alertLevelType(level: string): 'error' | 'warning' | 'info' {
   return 'info'
 }
 
+function alertLevelLabel(level: string) {
+  if (level === 'severe') return '严重'
+  if (level === 'warning') return '警告'
+  return '提示'
+}
+
+function taskTypeLabel(type?: string) {
+  if (!type) return ''
+  const map: Record<string, string> = { detect: '目标检测', segment: '语义分割', classify: '图像分类', pose: '姿态估计' }
+  return map[type] || type
+}
+
+const frequencyMap: Record<string, string> = {
+  '30s': '30秒', '1min': '1分钟', '3min': '3分钟', '5min': '5分钟',
+  '10min': '10分钟', '30min': '30分钟', '1h': '1小时',
+}
+
+function frequencyLabel(freq?: string) {
+  if (!freq) return '5分钟'
+  return frequencyMap[freq] || freq
+}
+
 function formatTime(iso: string) {
   if (!iso) return '-'
   const d = new Date(iso)
   return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function formatFullTime(iso: string) {
+  if (!iso) return '-'
+  const d = new Date(iso)
+  return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+// --- Detail Drawer ---
+const drawerVisible = ref(false)
+const drawerTask = ref<MonitorTask | null>(null)
+const drawerRecords = ref<InferenceRecord[]>([])
+const drawerTotal = ref(0)
+const drawerPage = ref(1)
+const drawerPageSize = ref(10)
+const drawerLoading = ref(false)
+
+function openDetailDrawer(task: MonitorTask) {
+  drawerTask.value = task
+  drawerPage.value = 1
+  drawerRecords.value = []
+  drawerTotal.value = 0
+  drawerVisible.value = true
+  fetchDrawerRecords()
+}
+
+async function fetchDrawerRecords() {
+  if (!drawerTask.value) return
+  drawerLoading.value = true
+  try {
+    const res = await getInferenceRecords({
+      taskId: drawerTask.value.id,
+      page: drawerPage.value,
+      size: drawerPageSize.value,
+    }) as unknown as { items: InferenceRecord[]; total: number }
+    drawerRecords.value = res.items ?? []
+    drawerTotal.value = res.total ?? 0
+  } catch {
+    drawerRecords.value = []
+    drawerTotal.value = 0
+  } finally {
+    drawerLoading.value = false
+  }
+}
+
+function handleDrawerPageSizeChange(size: number) {
+  drawerPageSize.value = size
+  drawerPage.value = 1
+  fetchDrawerRecords()
 }
 
 // --- Lifecycle ---

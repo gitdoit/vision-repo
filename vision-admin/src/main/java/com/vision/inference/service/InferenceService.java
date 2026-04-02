@@ -116,6 +116,7 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
                 dto.getEndTime(),
                 dto.getCameraId(),
                 dto.getAlertType(),
+                dto.getTaskId(),
                 dto.getSize(),
                 offset
         );
@@ -124,7 +125,8 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
                 dto.getStartTime(),
                 dto.getEndTime(),
                 dto.getCameraId(),
-                dto.getAlertType()
+                dto.getAlertType(),
+                dto.getTaskId()
         );
 
         List<InferenceRecordVO> voList = records.stream()

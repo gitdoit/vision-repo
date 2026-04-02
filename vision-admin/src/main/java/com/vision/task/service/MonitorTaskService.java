@@ -12,8 +12,11 @@ import com.vision.common.exception.BizException;
 import com.vision.model.entity.Model;
 import com.vision.model.mapper.ModelMapper;
 import com.vision.model.service.ModelService;
+import com.vision.node.entity.InferenceNode;
+import com.vision.node.mapper.InferenceNodeMapper;
 import com.vision.task.dto.MonitorTaskCreateDTO;
 import com.vision.task.dto.MonitorTaskVO;
+import com.vision.task.dto.TaskNodeInfo;
 import com.vision.task.entity.MonitorTask;
 import com.vision.task.mapper.MonitorTaskMapper;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +25,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +43,7 @@ public class MonitorTaskService extends ServiceImpl<MonitorTaskMapper, MonitorTa
     private final CameraGroupMappingMapper cameraGroupMappingMapper;
     private final ModelMapper modelMapper;
     private final ModelService modelService;
+    private final InferenceNodeMapper inferenceNodeMapper;
 
     /**
      * 分页查询监测任务
@@ -261,12 +267,42 @@ public class MonitorTaskService extends ServiceImpl<MonitorTaskMapper, MonitorTa
             }
         }
 
-        // 填充模型名称
+        // 填充模型信息
         if (task.getModelId() != null) {
             Model model = modelMapper.selectById(task.getModelId());
             if (model != null) {
                 vo.setModelName(model.getName());
+                if (model.getClassNames() != null && !model.getClassNames().isBlank()) {
+                    vo.setModelClassNames(Arrays.stream(model.getClassNames().split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .collect(Collectors.toList()));
+                }
+                vo.setModelInputResolution(model.getInputResolution());
+                vo.setModelTaskType(model.getTaskType());
             }
+        }
+
+        // 填充关联推理节点信息
+        if (task.getNodeIds() != null && !task.getNodeIds().isBlank()) {
+            List<String> nodeIdList = Arrays.stream(task.getNodeIds().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+            List<TaskNodeInfo> nodeInfos = new ArrayList<>();
+            for (String nodeId : nodeIdList) {
+                InferenceNode node = inferenceNodeMapper.selectById(nodeId);
+                if (node != null) {
+                    TaskNodeInfo info = new TaskNodeInfo();
+                    info.setNodeId(node.getId());
+                    info.setNodeName(node.getNodeName());
+                    info.setHost(node.getHost());
+                    info.setPort(node.getPort());
+                    info.setStatus(node.getStatus());
+                    nodeInfos.add(info);
+                }
+            }
+            vo.setNodes(nodeInfos);
         }
 
         return vo;
