@@ -26,6 +26,8 @@ public class AlertVO {
     private String location;
     private String ruleId;
     private Boolean readStatus;
+    private String taskId;
+    private String taskName;
     private LocalDateTime createdAt;
 
     /**
@@ -47,6 +49,7 @@ public class AlertVO {
         vo.setLocation(entity.getLocation());
         vo.setRuleId(entity.getRuleId());
         vo.setReadStatus(entity.getReadStatus());
+        vo.setTaskId(entity.getTaskId());
         vo.setCreatedAt(entity.getCreatedAt());
         return vo;
     }

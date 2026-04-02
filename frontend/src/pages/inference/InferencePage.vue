@@ -1,117 +1,73 @@
 <template>
-  <div class="space-y-6">
-    <!-- Header -->
-    <div>
-      <p class="text-sm text-on-surface-variant">检索全量推理结果及告警详情记录</p>
-    </div>
+  <div class="space-y-4">
+    <p class="text-sm text-on-surface-variant">检索全量推理结果及告警详情记录</p>
 
     <!-- Filters -->
-    <div class="flex items-end gap-4 rounded-xl bg-bg-card p-4">
-      <div class="flex items-center gap-3">
-        <div class="flex gap-1">
-          <button
-            v-for="range in timeRanges"
-            :key="range.value"
-            class="rounded-full px-3 py-1 text-xs transition-colors"
-            :class="selectedTimeRange === range.value ? 'bg-primary/15 text-primary' : 'text-on-surface-variant hover:bg-bg-active'"
-            @click="selectedTimeRange = range.value"
-          >
-            {{ range.label }}
-          </button>
-        </div>
+    <div class="flex flex-wrap items-center gap-3 rounded-xl bg-bg-card px-4 py-3">
+      <div class="flex gap-1">
+        <button
+          v-for="range in timeRanges"
+          :key="range.value"
+          class="rounded-full px-3 py-1 text-xs transition-colors"
+          :class="selectedTimeRange === range.value ? 'bg-primary/15 text-primary' : 'text-on-surface-variant hover:bg-bg-active'"
+          @click="applyTimeRange(range.value)"
+        >
+          {{ range.label }}
+        </button>
       </div>
-      <n-select v-model:value="filterBusiness" :options="businessOptions" placeholder="业务类型" size="small" class="w-40" clearable />
-      <n-input v-model:value="filterCamera" placeholder="摄像头 ID" size="small" class="w-40" />
+      <n-select v-model:value="filterAlertStatus" :options="alertStatusOptions" placeholder="告警状态" size="small" class="w-28" clearable />
+      <n-input v-model:value="filterCamera" placeholder="摄像头ID" size="small" class="w-36" clearable @keyup.enter="doSearch" />
       <div class="flex items-center gap-2 text-xs text-on-surface-variant">
-        <span>置信度范围</span>
-        <span class="font-mono text-primary">{{ confidenceRange[0].toFixed(2) }} - {{ confidenceRange[1].toFixed(2) }}</span>
+        <span>置信度</span>
+        <span class="font-mono text-primary">{{ confidenceRange[0].toFixed(2) }}-{{ confidenceRange[1].toFixed(2) }}</span>
       </div>
-      <n-slider
-        v-model:value="confidenceRange"
-        range
-        :min="0" :max="1" :step="0.05"
-        class="w-40"
-      />
-      <n-button size="small" quaternary @click="resetFilters">重置条件</n-button>
-      <n-button size="small" type="primary">查询推理结果</n-button>
+      <n-slider v-model:value="confidenceRange" range :min="0" :max="1" :step="0.05" class="w-32" />
+      <n-button size="small" quaternary @click="resetFilters">重置</n-button>
+      <n-button size="small" type="primary" @click="doSearch">查询</n-button>
       <div class="ml-auto flex gap-2">
-        <n-button size="small" quaternary>
+        <n-button size="small" quaternary @click="handleExport('csv')">
           <template #icon><Icon icon="mdi:file-delimited" /></template>
-          导出 CSV
+          CSV
         </n-button>
-        <n-button size="small" quaternary>
+        <n-button size="small" quaternary @click="handleExport('excel')">
           <template #icon><Icon icon="mdi:table" /></template>
-          导出 Excel
+          Excel
         </n-button>
       </div>
     </div>
 
-    <div class="flex gap-4">
-      <!-- Record List -->
-      <div class="flex-1 space-y-3">
-        <div
-          v-for="record in inferenceStore.records"
-          :key="record.id"
-          class="flex gap-4 rounded-xl p-4 transition-colors cursor-pointer"
-          :class="selectedRecordId === record.id ? 'bg-bg-active ring-1 ring-primary/30' : 'bg-bg-card hover:bg-bg-active'"
-          @click="selectRecord(record)"
-        >
-          <!-- Thumbnail -->
-          <div class="w-40 h-24 rounded-lg bg-bg-void overflow-hidden shrink-0 relative">
-            <img v-if="record.thumbnailUrl" :src="record.thumbnailUrl" class="w-full h-full object-cover" alt="" />
-            <canvas
-              v-if="hasSegmentMask(record)"
-              :data-record-id="record.id"
-              class="thumb-mask-canvas absolute inset-0 w-full h-full pointer-events-none"
-            />
-            <div v-if="!record.thumbnailUrl" class="w-full h-full flex items-center justify-center">
-              <Icon icon="mdi:image" class="text-3xl text-on-surface-variant opacity-30" />
-            </div>
-          </div>
-
-          <!-- Info -->
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-3">
-              <h4 class="text-sm font-semibold">{{ record.eventId }}</h4>
-              <n-tag
-                size="tiny" :bordered="false"
-                :type="alertType(record.alertStatus)"
-              >
-                {{ alertLabel(record.alertStatus) }}
-              </n-tag>
-            </div>
-            <p class="text-xs text-on-surface-variant mt-1">{{ record.createdAt }}</p>
-            <div class="mt-2 flex items-center gap-3 text-xs text-on-surface-variant">
-              <span>平均置信度 <strong class="text-primary">{{ (record.avgConfidence ?? 0).toFixed(2) }}</strong></span>
-              <span class="flex items-center gap-1">
-                <Icon icon="mdi:video" class="text-sm" />
-                {{ record.cameraId }}
-              </span>
-              <span class="flex items-center gap-1">
-                <Icon icon="mdi:chart-line" class="text-sm" />
-                {{ record.businessType }}
-              </span>
-            </div>
-            <div class="mt-2 flex gap-1">
-              <n-tag v-for="d in record.detections" :key="d.label" size="tiny" :bordered="false" type="warning">
-                {{ d.label }} x{{ d.count }}
-              </n-tag>
-            </div>
-          </div>
-
-          <n-button size="tiny" quaternary>查看详情</n-button>
-        </div>
+    <!-- Table -->
+    <div class="rounded-xl bg-bg-card">
+      <n-data-table
+        :columns="columns"
+        :data="inferenceStore.records"
+        :loading="inferenceStore.loading"
+        :bordered="false"
+        :row-key="(row: InferenceRecord) => row.id"
+        :row-props="rowProps"
+        size="small"
+        :pagination="false"
+        :max-height="'calc(100vh - 340px)'"
+        flex-height
+      />
+      <div class="flex items-center justify-between px-4 py-3 border-t border-outline-variant/10">
+        <span class="text-xs text-on-surface-variant">共 {{ inferenceStore.total }} 条记录</span>
+        <n-pagination
+          v-model:page="currentPage"
+          v-model:page-size="currentPageSize"
+          :item-count="inferenceStore.total"
+          :page-sizes="[10, 20, 50]"
+          show-size-picker
+          size="small"
+          @update:page="handlePageChange"
+          @update:page-size="handlePageSizeChange"
+        />
       </div>
+    </div>
 
-      <!-- Detail Panel -->
-      <div v-if="selectedRecord" class="w-[480px] shrink-0 rounded-xl bg-bg-card p-6 max-h-[calc(100vh-220px)] overflow-y-auto">
-        <div class="mb-4 flex items-center justify-between">
-          <h3 class="text-lg font-semibold">推理详情 - {{ selectedRecord.eventId }}</h3>
-          <button class="text-on-surface-variant hover:text-on-surface" @click="selectedRecordId = null">
-            <Icon icon="mdi:close" class="text-xl" />
-          </button>
-        </div>
-
+    <!-- Detail Drawer -->
+    <n-drawer v-model:show="drawerVisible" :width="540" placement="right">
+      <n-drawer-content v-if="selectedRecord" :title="'推理详情'" closable>
         <!-- Image Viewer -->
         <div class="mb-4">
           <div class="flex gap-2 mb-3">
@@ -124,10 +80,6 @@
             >
               {{ tab }}
             </button>
-            <div class="ml-auto flex gap-2">
-              <button class="text-on-surface-variant hover:text-primary"><Icon icon="mdi:download" /></button>
-              <button class="text-on-surface-variant hover:text-primary"><Icon icon="mdi:content-copy" /></button>
-            </div>
           </div>
           <div class="rounded-lg bg-bg-void overflow-hidden flex items-center justify-center" style="min-height: 12rem">
             <img v-if="imageTab === '原始画面' && detailImageUrl" :src="detailImageUrl" class="w-full object-contain" alt="" />
@@ -139,56 +91,355 @@
           </div>
         </div>
 
-        <!-- Raw JSON -->
-        <div class="mb-4">
-          <h4 class="mb-2 text-sm font-semibold text-on-surface-variant">原始JSON结果</h4>
-          <pre class="rounded-lg bg-bg-void p-4 text-xs font-mono text-primary/80 overflow-auto max-h-48">{{ selectedRecord.rawJson }}</pre>
-        </div>
-
-        <!-- Related Alerts -->
-        <div v-if="selectedRecord.relatedAlerts?.length">
-          <h4 class="mb-2 text-sm font-semibold text-on-surface-variant">关联告警</h4>
-          <div class="space-y-2">
-            <div
-              v-for="alert in selectedRecord.relatedAlerts"
-              :key="alert.title"
-              class="flex items-center justify-between rounded-lg bg-bg-floor px-4 py-2"
-            >
-              <span class="text-sm">{{ alert.title }}</span>
-              <span class="text-xs text-on-surface-variant">{{ alert.time }}</span>
-            </div>
+        <!-- Info Cards -->
+        <div class="mb-4 grid grid-cols-3 gap-2">
+          <div class="rounded-lg bg-bg-void px-3 py-2 text-center">
+            <div class="text-xs text-on-surface-variant">抓帧耗时</div>
+            <div class="text-sm font-semibold text-primary">{{ selectedRecord.captureTimeMs ?? '—' }}<span class="text-xs font-normal"> ms</span></div>
+          </div>
+          <div class="rounded-lg bg-bg-void px-3 py-2 text-center">
+            <div class="text-xs text-on-surface-variant">推理耗时</div>
+            <div class="text-sm font-semibold text-primary">{{ selectedRecord.inferenceTimeMs ?? '—' }}<span class="text-xs font-normal"> ms</span></div>
+          </div>
+          <div class="rounded-lg bg-bg-void px-3 py-2 text-center">
+            <div class="text-xs text-on-surface-variant">总耗时</div>
+            <div class="text-sm font-semibold text-primary">{{ totalTimeMs }}<span class="text-xs font-normal"> ms</span></div>
           </div>
         </div>
-      </div>
-    </div>
+
+        <!-- Metadata -->
+        <div class="mb-4 space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-on-surface-variant">摄像头</span><span>{{ selectedRecord.cameraName || selectedRecord.cameraId }}</span></div>
+          <div class="flex justify-between"><span class="text-on-surface-variant">关联任务</span><span>{{ selectedRecord.taskName || '—' }}</span></div>
+          <div class="flex justify-between"><span class="text-on-surface-variant">所属分组</span><span>{{ selectedRecord.groupName || '—' }}</span></div>
+          <div class="flex justify-between"><span class="text-on-surface-variant">模型</span><span>{{ selectedRecord.modelName || '—' }}</span></div>
+          <div class="flex justify-between"><span class="text-on-surface-variant">告警状态</span>
+            <n-tag size="tiny" :bordered="false" :type="alertTagType(selectedRecord.alertStatus)">{{ alertLabel(selectedRecord.alertStatus) }}</n-tag>
+          </div>
+          <div class="flex justify-between"><span class="text-on-surface-variant">平均置信度</span><span class="text-primary font-semibold">{{ (selectedRecord.avgConfidence ?? 0).toFixed(2) }}</span></div>
+          <div class="flex justify-between"><span class="text-on-surface-variant">时间</span><span>{{ selectedRecord.createdAt }}</span></div>
+        </div>
+
+        <!-- Detection Table -->
+        <div v-if="selectedRecord.detections?.length" class="mb-4">
+          <h4 class="mb-2 text-sm font-semibold text-on-surface-variant">检测目标</h4>
+          <n-data-table
+            :columns="detectionColumns"
+            :data="selectedRecord.detections"
+            :bordered="false"
+            size="small"
+            :pagination="false"
+          />
+        </div>
+
+        <!-- Raw JSON (collapsed) -->
+        <div>
+          <h4 class="mb-2 text-sm font-semibold text-on-surface-variant cursor-pointer flex items-center gap-1" @click="showJson = !showJson">
+            <Icon :icon="showJson ? 'mdi:chevron-down' : 'mdi:chevron-right'" class="text-base" />
+            原始JSON
+          </h4>
+          <pre v-show="showJson" class="rounded-lg bg-bg-void p-3 text-xs font-mono text-primary/80 overflow-auto max-h-48">{{ formatJson(selectedRecord.rawJson) }}</pre>
+        </div>
+      </n-drawer-content>
+    </n-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { NSelect, NInput, NSlider, NButton, NTag } from 'naive-ui'
+import { ref, computed, watch, nextTick, onMounted, h } from 'vue'
+import { NSelect, NInput, NSlider, NButton, NTag, NDataTable, NDrawer, NDrawerContent, NPagination, NProgress } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
 import { Icon } from '@iconify/vue'
 import { useInferenceStore } from '@/stores/inference'
-import type { InferenceRecord } from '@/types'
+import { exportInferenceCsv, exportInferenceExcel } from '@/api/modules/inference'
+import type { InferenceRecord, Detection } from '@/types'
 
 const inferenceStore = useInferenceStore()
-const selectedRecordId = ref<string | null>(null)
-const selectedTimeRange = ref('today')
-const filterBusiness = ref<string | null>(null)
-const filterCamera = ref('')
-const confidenceRange = ref<[number, number]>([0.65, 1.0])
-const imageTab = ref('原始画面')
 
+// --- Filters ---
+const selectedTimeRange = ref('today')
+const filterAlertStatus = ref<string | null>(null)
+const filterCamera = ref('')
+const confidenceRange = ref<[number, number]>([0, 1.0])
+
+const currentPage = ref(1)
+const currentPageSize = ref(20)
+
+// --- Detail ---
+const drawerVisible = ref(false)
 const selectedRecord = ref<InferenceRecord | null>(null)
+const imageTab = ref('原始画面')
 const annotationCanvas = ref<HTMLCanvasElement | null>(null)
+const showJson = ref(false)
 
 const detailImageUrl = computed(() => {
   if (!selectedRecord.value) return ''
   return selectedRecord.value.originalImageUrl || selectedRecord.value.thumbnailUrl || ''
 })
 
+const totalTimeMs = computed(() => {
+  if (!selectedRecord.value) return '—'
+  const c = selectedRecord.value.captureTimeMs ?? 0
+  const i = selectedRecord.value.inferenceTimeMs ?? 0
+  return c + i || '—'
+})
+
+// --- Time range helpers ---
+const timeRanges = [
+  { label: '全部', value: 'all' },
+  { label: '今日', value: 'today' },
+  { label: '7日', value: '7d' },
+  { label: '本月', value: 'month' },
+]
+
+const alertStatusOptions = [
+  { label: '正常', value: 'normal' },
+  { label: '告警', value: 'alert' },
+]
+
+function getTimeRange(value: string): { startTime?: string; endTime?: string } {
+  const now = new Date()
+  const fmt = (d: Date) => d.toISOString().slice(0, 19)
+  if (value === 'today') {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    return { startTime: fmt(start) }
+  }
+  if (value === '7d') {
+    const start = new Date(now.getTime() - 7 * 86400000)
+    return { startTime: fmt(start) }
+  }
+  if (value === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { startTime: fmt(start) }
+  }
+  return {}
+}
+
+function buildQueryParams() {
+  const params: Record<string, unknown> = {
+    page: currentPage.value,
+    size: currentPageSize.value,
+  }
+  const tr = getTimeRange(selectedTimeRange.value)
+  if (tr.startTime) params.startTime = tr.startTime
+  if (tr.endTime) params.endTime = tr.endTime
+  if (filterAlertStatus.value) params.alertType = filterAlertStatus.value
+  if (filterCamera.value.trim()) params.cameraId = filterCamera.value.trim()
+  if (confidenceRange.value[0] > 0) params.minConfidence = confidenceRange.value[0]
+  if (confidenceRange.value[1] < 1) params.maxConfidence = confidenceRange.value[1]
+  return params
+}
+
+function doSearch() {
+  currentPage.value = 1
+  fetchData()
+}
+
+function fetchData() {
+  inferenceStore.fetchRecords(buildQueryParams())
+}
+
+function applyTimeRange(value: string) {
+  selectedTimeRange.value = value
+  doSearch()
+}
+
+function resetFilters() {
+  selectedTimeRange.value = 'today'
+  filterAlertStatus.value = null
+  filterCamera.value = ''
+  confidenceRange.value = [0, 1.0]
+  doSearch()
+}
+
+function handlePageChange(page: number) {
+  currentPage.value = page
+  fetchData()
+}
+
+function handlePageSizeChange(size: number) {
+  currentPageSize.value = size
+  currentPage.value = 1
+  fetchData()
+}
+
+// --- Export ---
+async function handleExport(format: 'csv' | 'excel') {
+  const params = buildQueryParams()
+  try {
+    const res = format === 'csv'
+      ? await exportInferenceCsv(params)
+      : await exportInferenceExcel(params)
+    const blob = res as unknown as Blob
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `inference_export.${format === 'csv' ? 'csv' : 'xlsx'}`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('Export failed:', e)
+  }
+}
+
+// --- Table Columns ---
+const columns = computed<DataTableColumns<InferenceRecord>>(() => [
+  {
+    key: 'thumbnail',
+    title: '缩略图',
+    width: 100,
+    render(row) {
+      return h('div', { class: 'w-20 h-12 rounded bg-bg-void overflow-hidden relative shrink-0' }, [
+        row.thumbnailUrl
+          ? h('img', { src: row.thumbnailUrl, class: 'w-full h-full object-cover', alt: '' })
+          : h(Icon, { icon: 'mdi:image', class: 'text-xl text-on-surface-variant opacity-30 absolute inset-0 m-auto' }),
+        hasSegmentMask(row)
+          ? h('canvas', { 'data-record-id': row.id, class: 'thumb-mask-canvas absolute inset-0 w-full h-full pointer-events-none' })
+          : null,
+      ])
+    },
+  },
+  {
+    key: 'cameraName',
+    title: '摄像头',
+    width: 130,
+    ellipsis: { tooltip: true },
+    render(row) {
+      return h('span', { class: 'text-xs' }, row.cameraName || row.cameraId || '—')
+    },
+  },
+  {
+    key: 'taskName',
+    title: '关联任务',
+    width: 130,
+    ellipsis: { tooltip: true },
+    render(row) {
+      return h('span', { class: 'text-xs' }, row.taskName || '—')
+    },
+  },
+  {
+    key: 'groupName',
+    title: '分组',
+    width: 100,
+    ellipsis: { tooltip: true },
+    render(row) {
+      return h('span', { class: 'text-xs' }, row.groupName || '—')
+    },
+  },
+  {
+    key: 'detections',
+    title: '检测目标',
+    width: 160,
+    render(row) {
+      if (!row.detections?.length) return h('span', { class: 'text-xs text-on-surface-variant' }, '无')
+      return h('div', { class: 'flex flex-wrap gap-0.5' },
+        row.detections.slice(0, 3).map(d =>
+          h(NTag, { size: 'tiny', bordered: false, type: 'warning' }, { default: () => `${d.label}×${d.count}` })
+        ).concat(row.detections.length > 3 ? [h('span', { class: 'text-xs text-on-surface-variant' }, `+${row.detections.length - 3}`)] : [])
+      )
+    },
+  },
+  {
+    key: 'alertStatus',
+    title: '状态',
+    width: 70,
+    render(row) {
+      return h(NTag, { size: 'tiny', bordered: false, type: alertTagType(row.alertStatus) },
+        { default: () => alertLabel(row.alertStatus) })
+    },
+  },
+  {
+    key: 'avgConfidence',
+    title: '置信度',
+    width: 90,
+    sorter: (a, b) => (a.avgConfidence ?? 0) - (b.avgConfidence ?? 0),
+    render(row) {
+      const val = row.avgConfidence ?? 0
+      return h('div', { class: 'flex items-center gap-1' }, [
+        h(NProgress, { type: 'line', percentage: Math.round(val * 100), showIndicator: false, height: 4, class: 'flex-1' }),
+        h('span', { class: 'text-xs font-mono w-10 text-right' }, (val * 100).toFixed(0) + '%'),
+      ])
+    },
+  },
+  {
+    key: 'timing',
+    title: '耗时',
+    width: 110,
+    render(row) {
+      const c = row.captureTimeMs
+      const i = row.inferenceTimeMs
+      return h('div', { class: 'text-xs leading-relaxed' }, [
+        c != null ? h('div', {}, [h('span', { class: 'text-on-surface-variant' }, '抓帧 '), h('span', {}, c + 'ms')]) : null,
+        i != null ? h('div', {}, [h('span', { class: 'text-on-surface-variant' }, '推理 '), h('span', {}, i + 'ms')]) : null,
+        (c == null && i == null) ? h('span', { class: 'text-on-surface-variant' }, '—') : null,
+      ])
+    },
+  },
+  {
+    key: 'createdAt',
+    title: '时间',
+    width: 150,
+    sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    render(row) {
+      return h('span', { class: 'text-xs' }, row.createdAt)
+    },
+  },
+])
+
+const detectionColumns: DataTableColumns<Detection> = [
+  { key: 'label', title: '标签', width: 100 },
+  {
+    key: 'confidence',
+    title: '置信度',
+    width: 80,
+    render(row) { return h('span', {}, ((row.confidence ?? 0) * 100).toFixed(1) + '%') },
+  },
+  { key: 'count', title: '数量', width: 60 },
+  {
+    key: 'bbox',
+    title: '坐标',
+    ellipsis: { tooltip: true },
+    render(row) { return h('span', { class: 'font-mono text-xs' }, String(row.bbox ?? '—')) },
+  },
+]
+
+function rowProps(row: InferenceRecord) {
+  return {
+    class: 'cursor-pointer',
+    onClick: () => openDetail(row),
+  }
+}
+
+function openDetail(record: InferenceRecord) {
+  selectedRecord.value = record
+  imageTab.value = '原始画面'
+  showJson.value = false
+  drawerVisible.value = true
+}
+
+// --- Helpers ---
+function alertTagType(status: string): 'success' | 'warning' | 'error' {
+  if (status === 'alert') return 'error'
+  if (status === 'warning') return 'warning'
+  return 'success'
+}
+
+function alertLabel(status: string) {
+  if (status === 'alert') return '告警'
+  if (status === 'warning') return '警告'
+  return '正常'
+}
+
+function formatJson(raw: string | object) {
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return JSON.stringify(obj, null, 2)
+  } catch { return String(raw) }
+}
+
+// --- Lifecycle ---
 onMounted(() => {
-  inferenceStore.fetchRecords()
+  fetchData()
 })
 
 // Render thumbnail mask overlays after records load
@@ -202,32 +453,7 @@ watch(() => inferenceStore.records, async (records) => {
   }
 }, { immediate: true })
 
-const timeRanges = [
-  { label: '今日', value: 'today' },
-  { label: '7日', value: '7d' },
-  { label: '本月', value: 'month' },
-]
-
-const businessOptions = [
-  { label: '工业安全', value: 'industrial' },
-  { label: '安全合规', value: 'compliance' },
-  { label: '消防监测', value: 'fire' },
-  { label: '进入管控', value: 'access' },
-]
-
-function resetFilters() {
-  selectedTimeRange.value = 'today'
-  filterBusiness.value = null
-  filterCamera.value = ''
-  confidenceRange.value = [0.65, 1.0]
-}
-
-function selectRecord(record: InferenceRecord) {
-  selectedRecordId.value = record.id
-  selectedRecord.value = record
-  imageTab.value = '原始画面'
-}
-
+// Render annotation when switching to AI tab
 watch(imageTab, async (tab) => {
   if (tab === 'AI标注' && selectedRecord.value) {
     await nextTick()
@@ -237,19 +463,9 @@ watch(imageTab, async (tab) => {
   }
 })
 
-function alertType(status: string): 'success' | 'warning' | 'error' {
-  if (status === 'alert') return 'error'
-  if (status === 'warning') return 'warning'
-  return 'success'
-}
-
-function alertLabel(status: string) {
-  if (status === 'alert') return '告警'
-  if (status === 'warning') return '警告'
-  return '正常'
-}
-
-// --- Mask rendering ---
+// =====================================================================
+// Mask rendering utilities (preserved from original implementation)
+// =====================================================================
 
 interface RawJsonObject {
   bbox?: number[]
@@ -292,8 +508,8 @@ function renderThumbnailOverlay(el: HTMLCanvasElement | null, record: InferenceR
   if (!parsed || parsed.task_type !== 'segment' || !parsed.objects) return
 
   const dpr = window.devicePixelRatio || 1
-  const w = 160 * dpr
-  const h = 96 * dpr
+  const w = 80 * dpr
+  const h = 48 * dpr
   el.width = w
   el.height = h
   const ctx = el.getContext('2d')!
@@ -335,8 +551,6 @@ function decodeMaskToImageData(maskImg: HTMLImageElement): ImageData {
 }
 
 function isMaskPixelFilled(data: Uint8ClampedArray, idx: number): boolean {
-  // For grayscale PNGs drawn to canvas: R=G=B=value, A=255
-  // Check alpha first, then if any channel has significant value
   if (data[idx + 3] < 10) return false
   return data[idx] > 10 || data[idx + 1] > 10 || data[idx + 2] > 10
 }
@@ -378,7 +592,6 @@ async function renderAnnotation(canvas: HTMLCanvasElement, record: InferenceReco
   try {
     img = await loadImage(imageUrl)
   } catch {
-    // Retry without crossOrigin for servers without CORS
     img = await new Promise((resolve, reject) => {
       const i = new Image()
       i.onload = () => resolve(i)
@@ -393,7 +606,6 @@ async function renderAnnotation(canvas: HTMLCanvasElement, record: InferenceReco
 
   if (!parsed.objects) return
 
-  // Scale drawing params based on canvas resolution
   const lineScale = Math.max(1, canvas.width / 600)
   const contourRadius = Math.max(2, Math.round(canvas.width / 400))
   const fontSize = Math.round(Math.max(16, 16 * lineScale))
@@ -403,7 +615,6 @@ async function renderAnnotation(canvas: HTMLCanvasElement, record: InferenceReco
     const obj = parsed.objects[i]
     const color = MASK_COLORS[i % MASK_COLORS.length]
 
-    // Draw mask overlay + contours for segmentation
     if (parsed.task_type === 'segment' && obj.mask) {
       try {
         const maskImg = await loadImage('data:image/png;base64,' + obj.mask)
@@ -418,7 +629,6 @@ async function renderAnnotation(canvas: HTMLCanvasElement, record: InferenceReco
       }
     }
 
-    // Draw bbox
     if (obj.bbox && obj.bbox.length === 4) {
       const [x1, y1, x2, y2] = obj.bbox
       ctx.strokeStyle = color.stroke
@@ -450,7 +660,6 @@ function drawMaskContours(
   const cw = ctx.canvas.width
   const ch = ctx.canvas.height
 
-  // Parse stroke color
   const tmpCanvas = document.createElement('canvas')
   tmpCanvas.width = 1
   tmpCanvas.height = 1

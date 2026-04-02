@@ -173,6 +173,11 @@ export interface InferenceRecord {
   rawJson: string
   modelName?: string
   inferenceTimeMs?: number
+  /** Phase 1.2: 新增字段 */
+  taskId?: string
+  taskName?: string
+  groupName?: string
+  captureTimeMs?: number
   createdAt: string
   relatedAlerts?: RelatedAlert[]
 }
@@ -240,14 +245,51 @@ export interface AlertRecord {
   businessLine: string
 }
 
+/** 告警详情 */
+export interface Alert {
+  id: string
+  alertLevel: string
+  alertType: string
+  scene?: string
+  cameraId: string
+  cameraName?: string
+  streamId?: string
+  taskId?: string
+  taskName?: string
+  captureTime?: string
+  alertTime: string
+  triggerCondition?: string
+  relatedObjects?: string
+  evidence?: string
+  location?: string
+  ruleId?: string
+  readStatus: boolean
+  createdAt: string
+}
+
 export interface WeeklyTrend {
   date: string
   count: number
+  alertCount?: number
 }
 
 export interface BusinessLineAlert {
   name: string
   percentage: number
+  count?: number
+}
+
+/** 系统健康概览（Phase 1.3 仪表盘增强） */
+export interface SystemHealth {
+  onlineNodeCount: number
+  totalNodeCount: number
+  deployedModelCount: number
+  totalModelCount: number
+  runningTaskCount: number
+  stoppedTaskCount: number
+  errorTaskCount: number
+  unreadAlertCount: number
+  nodes: { nodeName: string; status: string; cpuPercent?: number; gpuPercent?: number }[]
 }
 
 /** 推理节点运行时负载信息 */

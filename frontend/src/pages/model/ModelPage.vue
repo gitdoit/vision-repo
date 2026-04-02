@@ -64,6 +64,10 @@
               <span class="text-on-surface-variant text-xs">分类数量</span>
               <span class="text-xs font-semibold">{{ model.numClasses ?? 0 }} 类</span>
             </div>
+            <div class="flex justify-between">
+              <span class="text-on-surface-variant text-xs">推理分辨率</span>
+              <span class="text-xs font-mono">{{ model.inputResolution || '-' }}</span>
+            </div>
              <div class="flex justify-between">
               <span class="text-on-surface-variant text-xs">创建时间</span>
               <span class="text-xs">{{ model.createdAt }}</span>
@@ -129,15 +133,9 @@
                     :format-tooltip="(v: number) => v.toFixed(2)" 
                   />
                </div>
-               <div class="flex gap-3">
-                   <div class="flex-1">
-                      <div class="text-xs text-on-surface-variant mb-1">最大并发</div>
-                      <n-input-number v-model:value="draftConfigs[model.id].maxConcurrency" :min="1" :max="16" size="small" class="w-full" />
-                   </div>
-                   <div class="flex-1">
-                      <div class="text-xs text-on-surface-variant mb-1">推理分辨率</div>
-                      <n-select :options="resolutionOptions" v-model:value="draftConfigs[model.id].inputResolution" size="small" />
-                   </div>
+               <div>
+                  <div class="text-xs text-on-surface-variant mb-1">最大并发</div>
+                  <n-input-number v-model:value="draftConfigs[model.id].maxConcurrency" :min="1" :max="16" size="small" class="w-full" />
                </div>
              </div>
           </div>
@@ -275,8 +273,9 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
 import {
-  NInput, NButton, NTag, NSlider, NFormItem, NInputNumber, NSelect,
-  NModal, NForm, NUpload, useMessage, useDialog, NRadioGroup, NRadio, NSpin, NDivider
+  NInput, NButton, NTag, NSlider, NFormItem, NInputNumber,
+  NSelect, NModal, NForm, NUpload, useMessage, useDialog,
+  NRadioGroup, NRadio, NSpin, NDivider
 } from 'naive-ui'
 import { Icon } from '@iconify/vue'
 import { useModelStore } from '@/stores/model'
@@ -318,14 +317,13 @@ function parsedStatusLabel(status?: string): string {
 }
 
 // ─── Local Draft Configs ──────────────────────────────────────
-const draftConfigs = reactive<Record<string, { confidenceThreshold: number, maxConcurrency: number, inputResolution: string }>>({})
+const draftConfigs = reactive<Record<string, { confidenceThreshold: number, maxConcurrency: number }>>({})
 
 function getDraftConfig(model: Model) {
   if (!draftConfigs[model.id]) {
     draftConfigs[model.id] = {
       confidenceThreshold: model.confidenceThreshold,
       maxConcurrency: model.maxConcurrency,
-      inputResolution: model.inputResolution,
     }
   }
   return draftConfigs[model.id]
@@ -336,8 +334,7 @@ function hasConfigChanges(modelId: string) {
   if (!model || !draftConfigs[modelId]) return false
   const draft = draftConfigs[modelId]
   return draft.confidenceThreshold !== model.confidenceThreshold ||
-         draft.maxConcurrency !== model.maxConcurrency ||
-         draft.inputResolution !== model.inputResolution
+         draft.maxConcurrency !== model.maxConcurrency
 }
 
 const saving = ref<string | null>(null)
@@ -350,7 +347,6 @@ async function handleSave(model: Model) {
     await modelStore.updateModelConfig(model.id, {
       confidenceThreshold: draft.confidenceThreshold,
       maxConcurrency: draft.maxConcurrency,
-      inputResolution: draft.inputResolution,
     })
     message.success(`${model.name} 配置已保存`)
   } catch (e: any) {
@@ -366,7 +362,6 @@ function handleDiscard(modelId: string) {
   draftConfigs[modelId] = {
     confidenceThreshold: model.confidenceThreshold,
     maxConcurrency: model.maxConcurrency,
-    inputResolution: model.inputResolution,
   }
 }
 
@@ -459,13 +454,6 @@ function getTaskTypeTagType(taskType?: string): 'success' | 'warning' | 'info' |
   }
   return types[taskType ?? 'detect'] ?? 'success'
 }
-
-const resolutionOptions = [
-  { label: '640x640', value: '640x640' },
-  { label: '1280x720', value: '1280x720' },
-  { label: '224x224', value: '224x224' },
-  { label: '160x160', value: '160x160' },
-]
 
 // ─── Load to Node ─────────────────────────────────────────────
 const showLoadModal = ref(false)

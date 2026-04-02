@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.vision.camera.entity.Camera;
 import com.vision.camera.mapper.CameraMapper;
+import com.vision.camera.mapper.CameraGroupMappingMapper;
+import com.vision.camera.mapper.CameraGroupMapper;
+import com.vision.camera.entity.CameraGroup;
+import com.vision.camera.entity.CameraGroupMapping;
 import com.vision.inference.dto.DetectionVO;
 import com.vision.inference.dto.InferenceQueryDTO;
 import com.vision.inference.dto.InferenceRecordVO;
@@ -21,6 +25,8 @@ import com.vision.model.mapper.ModelMapper;
 import com.vision.model.service.InferenceClient;
 import com.vision.model.service.ModelService;
 import com.vision.storage.StorageService;
+import com.vision.task.entity.MonitorTask;
+import com.vision.task.mapper.MonitorTaskMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -51,10 +57,13 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
     private final InferenceMapper inferenceMapper;
     private final DetectionMapper detectionMapper;
     private final CameraMapper cameraMapper;
+    private final CameraGroupMappingMapper cameraGroupMappingMapper;
+    private final CameraGroupMapper cameraGroupMapper;
     private final ModelMapper modelMapper;
     private final ModelService modelService;
     private final InferenceClient inferenceClient;
     private final StorageService storageService;
+    private final MonitorTaskMapper monitorTaskMapper;
 
     /**
      * 模型测试（单张图片推理）
@@ -260,11 +269,29 @@ public class InferenceService extends ServiceImpl<InferenceMapper, InferenceReco
     private InferenceRecordVO convertToVO(InferenceRecord record) {
         InferenceRecordVO vo = InferenceRecordVO.fromEntity(record);
 
-        // 加载摄像头名称
+        // 加载摄像头名称 + 分组名称
         if (record.getCameraId() != null) {
             Camera camera = cameraMapper.selectById(record.getCameraId());
             if (camera != null) {
                 vo.setCameraName(camera.getName());
+                // 查询摄像头所属分组名称（取第一个分组）
+                LambdaQueryWrapper<CameraGroupMapping> gw = new LambdaQueryWrapper<>();
+                gw.eq(CameraGroupMapping::getCameraId, record.getCameraId()).last("LIMIT 1");
+                CameraGroupMapping mapping = cameraGroupMappingMapper.selectOne(gw);
+                if (mapping != null) {
+                    CameraGroup group = cameraGroupMapper.selectById(mapping.getGroupId());
+                    if (group != null) {
+                        vo.setGroupName(group.getName());
+                    }
+                }
+            }
+        }
+
+        // 加载任务名称
+        if (record.getTaskId() != null) {
+            MonitorTask task = monitorTaskMapper.selectById(record.getTaskId());
+            if (task != null) {
+                vo.setTaskName(task.getName());
             }
         }
 

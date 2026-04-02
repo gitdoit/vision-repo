@@ -42,6 +42,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/inference/InferencePage.vue'),
         meta: { title: '推理历史查询', icon: 'mdi:history' },
       },
+      {
+        path: 'alerts',
+        name: 'Alerts',
+        component: () => import('@/pages/alert/AlertPage.vue'),
+        meta: { title: '告警事件管理', icon: 'mdi:alert-circle' },
+      },
     ],
   },
 ]

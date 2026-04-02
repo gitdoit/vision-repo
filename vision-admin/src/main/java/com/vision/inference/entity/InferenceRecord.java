@@ -83,6 +83,11 @@ public class InferenceRecord {
     private Integer inferenceTimeMs;
 
     /**
+     * 抓帧耗时(ms)
+     */
+    private Integer captureTimeMs;
+
+    /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)

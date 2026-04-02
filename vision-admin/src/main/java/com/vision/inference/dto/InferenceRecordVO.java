@@ -27,6 +27,10 @@ public class InferenceRecordVO {
     private String rawJson;
     private String modelName;
     private Integer inferenceTimeMs;
+    private Integer captureTimeMs;
+    private String taskId;
+    private String taskName;
+    private String groupName;
     private LocalDateTime createdAt;
 
     /**
@@ -51,6 +55,8 @@ public class InferenceRecordVO {
         vo.setRawJson(entity.getRawJson());
         vo.setModelName(entity.getModelName());
         vo.setInferenceTimeMs(entity.getInferenceTimeMs());
+        vo.setCaptureTimeMs(entity.getCaptureTimeMs());
+        vo.setTaskId(entity.getTaskId());
         vo.setCreatedAt(entity.getCreatedAt());
         return vo;
     }

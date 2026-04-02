@@ -60,6 +60,7 @@ const navItems = [
   { path: '/nodes', label: '推理节点管理', icon: 'mdi:server-network' },
   { path: '/tasks', label: '推理任务管理', icon: 'mdi:clipboard-check-outline' },
   { path: '/inference', label: '推理历史查询', icon: 'mdi:history' },
+  { path: '/alerts', label: '告警事件管理', icon: 'mdi:alert-circle' },
 ]
 
 function isActive(path: string) {

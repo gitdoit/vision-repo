@@ -8,6 +8,8 @@ import com.vision.alert.dto.AlertQueryDTO;
 import com.vision.alert.dto.AlertVO;
 import com.vision.alert.entity.Alert;
 import com.vision.alert.mapper.AlertMapper;
+import com.vision.camera.entity.Camera;
+import com.vision.camera.mapper.CameraMapper;
 import com.vision.common.util.IdUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ public class AlertService extends ServiceImpl<AlertMapper, Alert> {
 
     private final AlertMapper alertMapper;
     private final AlertPushService alertPushService;
+    private final CameraMapper cameraMapper;
 
     /**
      * 分页查询告警列表
@@ -176,6 +179,13 @@ public class AlertService extends ServiceImpl<AlertMapper, Alert> {
      * 转换为VO
      */
     private AlertVO convertToVO(Alert alert) {
-        return AlertVO.fromEntity(alert);
+        AlertVO vo = AlertVO.fromEntity(alert);
+        if (alert.getCameraId() != null) {
+            Camera camera = cameraMapper.selectById(alert.getCameraId());
+            if (camera != null) {
+                vo.setCameraName(camera.getName());
+            }
+        }
+        return vo;
     }
 }

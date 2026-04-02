@@ -17,4 +17,9 @@ public class WeeklyTrendVO {
      * 推理次数
      */
     private Long count;
+
+    /**
+     * 告警次数
+     */
+    private Long alertCount;
 }

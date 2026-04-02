@@ -1,5 +1,5 @@
 import client from '../client'
-import type { DashboardStats, AlertRecord, WeeklyTrend, BusinessLineAlert } from '@/types'
+import type { DashboardStats, AlertRecord, WeeklyTrend, BusinessLineAlert, SystemHealth } from '@/types'
 
 export function getDashboardStats() {
   return client.get<DashboardStats>('/dashboard/stats')
@@ -15,4 +15,8 @@ export function getAlertRanking() {
 
 export function getRealtimeAlerts() {
   return client.get<AlertRecord[]>('/dashboard/realtime-alerts')
+}
+
+export function getSystemHealth() {
+  return client.get<SystemHealth>('/dashboard/system-health')
 }

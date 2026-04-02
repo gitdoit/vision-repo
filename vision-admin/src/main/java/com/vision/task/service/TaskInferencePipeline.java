@@ -90,8 +90,9 @@ public class TaskInferencePipeline {
                         taskId, cameraId, camera.getStreamUrl());
                 return;
             }
+            int captureTimeMs = (int) (System.currentTimeMillis() - stepStart);
             log.info("  [1/8] 抓帧完成: cameraId={}, 耗时={}ms, 文件={}",
-                    cameraId, System.currentTimeMillis() - stepStart, tempFile.getFileName());
+                    cameraId, captureTimeMs, tempFile.getFileName());
 
             // 2. 上传图片
             stepStart = System.currentTimeMillis();
@@ -115,7 +116,7 @@ public class TaskInferencePipeline {
                     inferenceResult.get("objects") instanceof List ? ((List<?>) inferenceResult.get("objects")).size() : 0);
 
             // 4. 保存推理记录
-            InferenceRecord record = saveInferenceRecord(task, camera, model, imageUrl, inferenceResult);
+            InferenceRecord record = saveInferenceRecord(task, camera, model, imageUrl, inferenceResult, captureTimeMs);
             log.info("  [4/8] 推理记录已保存: recordId={}", record.getId());
 
             // 5. 保存检测结果
@@ -253,7 +254,7 @@ public class TaskInferencePipeline {
     }
 
     private InferenceRecord saveInferenceRecord(MonitorTask task, Camera camera, Model model,
-                                                String imageUrl, Map<String, Object> result) {
+                                                String imageUrl, Map<String, Object> result, int captureTimeMs) {
         InferenceRecord record = new InferenceRecord();
         record.setId(IdUtil.uuid());
         record.setTaskId(task.getId());
@@ -270,6 +271,7 @@ public class TaskInferencePipeline {
         }
         record.setAlertStatus("normal");
         record.setCreatedAt(LocalDateTime.now());
+        record.setCaptureTimeMs(captureTimeMs);
 
         if (result.get("inference_time_ms") != null) {
             record.setInferenceTimeMs(((Number) result.get("inference_time_ms")).intValue());

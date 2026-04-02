@@ -3,6 +3,7 @@ package com.vision.dashboard.controller;
 import com.vision.alert.dto.AlertVO;
 import com.vision.dashboard.dto.AlertRankingVO;
 import com.vision.dashboard.dto.DashboardStatsVO;
+import com.vision.dashboard.dto.SystemHealthVO;
 import com.vision.dashboard.dto.WeeklyTrendVO;
 import com.vision.dashboard.service.DashboardService;
 import com.vision.common.response.R;
@@ -60,5 +61,14 @@ public class DashboardController {
 
         List<AlertVO> alerts = dashboardService.getRealtimeAlerts(limit);
         return R.ok(alerts);
+    }
+
+    /**
+     * 获取系统健康概览
+     */
+    @GetMapping("/system-health")
+    public R<SystemHealthVO> getSystemHealth() {
+        SystemHealthVO health = dashboardService.getSystemHealth();
+        return R.ok(health);
     }
 }

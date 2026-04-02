@@ -9,9 +9,17 @@ import com.vision.camera.entity.Camera;
 import com.vision.camera.mapper.CameraMapper;
 import com.vision.dashboard.dto.AlertRankingVO;
 import com.vision.dashboard.dto.DashboardStatsVO;
+import com.vision.dashboard.dto.SystemHealthVO;
 import com.vision.dashboard.dto.WeeklyTrendVO;
 import com.vision.inference.entity.InferenceRecord;
 import com.vision.inference.mapper.InferenceMapper;
+import com.vision.model.entity.ModelNodeDeployment;
+import com.vision.model.mapper.ModelMapper;
+import com.vision.model.mapper.ModelNodeDeploymentMapper;
+import com.vision.node.entity.InferenceNode;
+import com.vision.node.mapper.InferenceNodeMapper;
+import com.vision.task.entity.MonitorTask;
+import com.vision.task.mapper.MonitorTaskMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,6 +43,10 @@ public class DashboardService {
     private final AlertMapper alertMapper;
     private final CameraMapper cameraMapper;
     private final AlertService alertService;
+    private final InferenceNodeMapper inferenceNodeMapper;
+    private final ModelMapper modelMapper;
+    private final ModelNodeDeploymentMapper modelNodeDeploymentMapper;
+    private final MonitorTaskMapper monitorTaskMapper;
 
     /**
      * 获取统计概览
@@ -105,9 +117,14 @@ public class DashboardService {
 
             Long count = inferenceMapper.countByTimeRange(dayStart, dayEnd);
 
+            LambdaQueryWrapper<Alert> alertDayWrapper = new LambdaQueryWrapper<>();
+            alertDayWrapper.ge(Alert::getAlertTime, dayStart).le(Alert::getAlertTime, dayEnd);
+            Long alertCount = alertMapper.selectCount(alertDayWrapper);
+
             WeeklyTrendVO vo = new WeeklyTrendVO();
             vo.setDate(date.format(formatter));
             vo.setCount(count);
+            vo.setAlertCount(alertCount);
             trendList.add(vo);
         }
 
@@ -151,5 +168,39 @@ public class DashboardService {
      */
     public List<AlertVO> getRealtimeAlerts(Integer limit) {
         return alertService.getLatestAlerts(limit);
+    }
+
+    /**
+     * 获取系统健康概览
+     */
+    public SystemHealthVO getSystemHealth() {
+        SystemHealthVO vo = new SystemHealthVO();
+
+        // 节点统计
+        vo.setTotalNodeCount(inferenceNodeMapper.selectCount(null));
+        LambdaQueryWrapper<InferenceNode> onlineWrapper = new LambdaQueryWrapper<>();
+        onlineWrapper.eq(InferenceNode::getStatus, "online");
+        vo.setOnlineNodeCount(inferenceNodeMapper.selectCount(onlineWrapper));
+
+        // 模型统计
+        vo.setTotalModelCount(modelMapper.selectCount(null));
+        LambdaQueryWrapper<ModelNodeDeployment> deployedWrapper = new LambdaQueryWrapper<>();
+        deployedWrapper.eq(ModelNodeDeployment::getStatus, "loaded");
+        vo.setDeployedModelCount(modelNodeDeploymentMapper.selectCount(deployedWrapper));
+
+        // 任务统计
+        vo.setRunningTaskCount(monitorTaskMapper.selectCount(
+                new LambdaQueryWrapper<MonitorTask>().eq(MonitorTask::getStatus, "running")));
+        vo.setStoppedTaskCount(monitorTaskMapper.selectCount(
+                new LambdaQueryWrapper<MonitorTask>().eq(MonitorTask::getStatus, "stopped")));
+        vo.setErrorTaskCount(monitorTaskMapper.selectCount(
+                new LambdaQueryWrapper<MonitorTask>().eq(MonitorTask::getStatus, "error")));
+
+        // 未读告警
+        LambdaQueryWrapper<Alert> unreadWrapper = new LambdaQueryWrapper<>();
+        unreadWrapper.eq(Alert::getReadStatus, false);
+        vo.setUnreadAlertCount(alertMapper.selectCount(unreadWrapper));
+
+        return vo;
     }
 }
