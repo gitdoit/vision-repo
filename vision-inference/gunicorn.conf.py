@@ -21,3 +21,10 @@ proc_name = 'vision-inference'
 # Max requests for worker recycling
 max_requests = 1000
 max_requests_jitter = 100
+
+
+def post_worker_init(worker):
+    """Called after worker has been initialized. Flask is ready to serve."""
+    from app import app
+    if hasattr(app, 'start_node_registration'):
+        app.start_node_registration()

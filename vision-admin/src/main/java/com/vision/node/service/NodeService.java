@@ -7,6 +7,7 @@ import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
 import com.vision.node.dto.*;
 import com.vision.node.entity.InferenceNode;
+import com.vision.node.event.NodeHeartbeatSyncEvent;
 import com.vision.node.event.NodeOnlineEvent;
 import com.vision.node.mapper.InferenceNodeMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -117,6 +118,10 @@ public class NodeService {
         info.setActiveTasks(dto.getActiveTasks());
         info.setSystemLoad(dto.getSystemLoad());
         runtimeCache.put(dto.getNodeId(), info);
+
+        // 发布心跳同步事件，由 ModelService 异步同步部署记录
+        eventPublisher.publishEvent(new NodeHeartbeatSyncEvent(
+                this, dto.getNodeId(), dto.getLoadedModels()));
     }
 
     /**

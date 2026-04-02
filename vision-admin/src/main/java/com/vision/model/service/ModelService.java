@@ -17,6 +17,7 @@ import com.vision.model.mapper.ModelVersionMapper;
 import com.vision.common.exception.BizException;
 import com.vision.common.util.IdUtil;
 import com.vision.node.entity.InferenceNode;
+import com.vision.node.event.NodeHeartbeatSyncEvent;
 import com.vision.node.event.NodeOnlineEvent;
 import com.vision.node.mapper.InferenceNodeMapper;
 import com.vision.node.service.NodeRouter;
@@ -473,16 +474,15 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
     }
 
     /**
-     * 节点上线时：
-     * 1. 自动解析所有待解析的模型
-     * 2. 同步该节点上已加载的模型到 model_node_deployment 表
+     * 节点上线时：自动解析所有待解析的模型。
+     * 部署记录同步由心跳事件驱动（见 onHeartbeatSync）。
      */
     @Async
     @EventListener
     public void onNodeOnline(NodeOnlineEvent event) {
         String nodeId = event.getNodeId();
 
-        // 1. 自动解析待解析模型
+        // 自动解析待解析模型
         List<Model> pendingModels = listPendingModels();
         if (!pendingModels.isEmpty()) {
             log.info("节点上线，开始自动解析待解析模型: nodeId={}, count={}", nodeId, pendingModels.size());
@@ -498,21 +498,32 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
                 }
             }
         }
-
-        // 2. 同步节点上已加载的模型到部署表
-        syncNodeDeployments(nodeId);
     }
 
     /**
-     * 同步推理节点上实际加载的模型与 Java 侧部署记录。
-     * - 节点上有、Java 侧没有 → 创建部署记录
-     * - Java 侧有、节点上没有 → 删除过期部署记录
+     * 心跳驱动部署同步：以推理节点实际加载的模型为准，强制同步 model_node_deployment 表。
+     * - 推理节点有、Java 侧没有 → 创建部署记录
+     * - Java 侧有、推理节点没有 → 删除过期部署记录
      */
-    private void syncNodeDeployments(String nodeId) {
-        try {
-            Map<String, Map<String, Object>> remoteModels = inferenceClient.getModelsStatus(nodeId);
-            log.info("同步节点模型部署: nodeId={}, 节点上已加载模型数={}", nodeId, remoteModels.size());
+    @Async
+    @EventListener
+    public void onHeartbeatSync(NodeHeartbeatSyncEvent event) {
+        String nodeId = event.getNodeId();
+        List<Map<String, Object>> loadedModels = event.getLoadedModels();
 
+        // 从心跳数据构建 modelId → device 映射
+        Map<String, String> remoteModelDevices = new HashMap<>();
+        if (loadedModels != null) {
+            for (Map<String, Object> m : loadedModels) {
+                String modelId = (String) m.get("modelId");
+                String device = m.get("device") != null ? m.get("device").toString() : "cpu";
+                if (modelId != null) {
+                    remoteModelDevices.put(modelId, device);
+                }
+            }
+        }
+
+        try {
             // 查询 Java 侧该节点的所有现有部署记录
             LambdaQueryWrapper<ModelNodeDeployment> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(ModelNodeDeployment::getNodeId, nodeId);
@@ -521,10 +532,19 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
                     .map(ModelNodeDeployment::getModelId)
                     .collect(Collectors.toSet());
 
-            // 节点上有但 Java 侧没有 → 创建部署记录
-            for (Map.Entry<String, Map<String, Object>> entry : remoteModels.entrySet()) {
+            // 已经完全一致，跳过
+            if (existingModelIds.equals(remoteModelDevices.keySet())) {
+                return;
+            }
+
+            // 推理节点有但 Java 侧没有 → 创建部署记录
+            for (Map.Entry<String, String> entry : remoteModelDevices.entrySet()) {
                 String modelId = entry.getKey();
-                Map<String, Object> info = entry.getValue();
+                String device = entry.getValue();
+
+                if (existingModelIds.contains(modelId)) {
+                    continue;
+                }
 
                 // 校验模型在 Java 侧存在
                 Model model = modelMapper.selectById(modelId);
@@ -533,29 +553,26 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
                     continue;
                 }
 
-                if (!existingModelIds.contains(modelId)) {
-                    ModelNodeDeployment deployment = new ModelNodeDeployment();
-                    deployment.setId(IdUtil.uuid());
-                    deployment.setModelId(modelId);
-                    deployment.setNodeId(nodeId);
-                    deployment.setDevice(info.getOrDefault("device", "cpu").toString());
-                    deployment.setStatus("loaded");
-                    deployment.setDeployedAt(LocalDateTime.now());
-                    deploymentMapper.insert(deployment);
-                    log.info("同步补录部署记录: modelId={}, nodeId={}", modelId, nodeId);
-                }
+                ModelNodeDeployment deployment = new ModelNodeDeployment();
+                deployment.setId(IdUtil.uuid());
+                deployment.setModelId(modelId);
+                deployment.setNodeId(nodeId);
+                deployment.setDevice(device);
+                deployment.setStatus("loaded");
+                deployment.setDeployedAt(LocalDateTime.now());
+                deploymentMapper.insert(deployment);
+                log.info("心跳同步补录部署记录: modelId={}, nodeId={}", modelId, nodeId);
             }
 
-            // Java 侧有但节点上没有 → 删除过期部署记录
-            Set<String> remoteModelIds = remoteModels.keySet();
+            // Java 侧有但推理节点没有 → 删除过期部署记录
             for (ModelNodeDeployment d : existingDeployments) {
-                if (!remoteModelIds.contains(d.getModelId())) {
+                if (!remoteModelDevices.containsKey(d.getModelId())) {
                     deploymentMapper.deleteById(d.getId());
-                    log.info("清理过期部署记录: modelId={}, nodeId={}", d.getModelId(), nodeId);
+                    log.info("心跳同步清理过期部署记录: modelId={}, nodeId={}", d.getModelId(), nodeId);
                 }
             }
         } catch (Exception e) {
-            log.warn("同步节点模型部署失败: nodeId={}", nodeId, e);
+            log.warn("心跳同步部署记录失败: nodeId={}", nodeId, e);
         }
     }
 }

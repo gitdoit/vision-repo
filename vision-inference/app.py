@@ -35,9 +35,21 @@ stream_manager = StreamTaskManager()
 # Restore models from previous session
 model_manager.restore_models()
 
-# Node registration (runs in background thread)
+# Node registration
 _node_registration = None
-if Config.ADMIN_URL:
+
+
+def start_node_registration():
+    """
+    Initialize and start node registration + heartbeat.
+    Must be called AFTER Flask/Gunicorn is ready to serve HTTP requests,
+    because the admin service will callback /models/status during registration.
+    """
+    global _node_registration
+    if not Config.ADMIN_URL:
+        return
+    if _node_registration is not None:
+        return  # Already registered
     try:
         from registration import NodeRegistration
         _node_registration = NodeRegistration(
@@ -54,6 +66,10 @@ if Config.ADMIN_URL:
         _node_registration.start_heartbeat()
     except Exception as e:
         logger.error('Node registration failed: %s', e)
+
+
+# Expose on app for gunicorn hook access
+app.start_node_registration = start_node_registration
 
 
 @app.route('/health', methods=['GET'])
@@ -535,5 +551,29 @@ def method_not_allowed(error):
 
 
 if __name__ == '__main__':
-    # Development server only
+    # Development server: start registration after Flask is serving
+    import threading
+
+    def _wait_and_register():
+        """Poll local health endpoint until Flask is ready, then register."""
+        import time
+        import requests as _req
+        _s = _req.Session()
+        _s.trust_env = False
+        url = f'http://127.0.0.1:{Config.PORT}/health'
+        for _ in range(30):
+            try:
+                resp = _s.get(url, timeout=1)
+                if resp.status_code == 200:
+                    start_node_registration()
+                    return
+            except Exception:
+                pass
+            time.sleep(0.5)
+        logger.error('Flask did not become ready in time, skipping registration')
+
+    if Config.ADMIN_URL:
+        threading.Thread(target=_wait_and_register, daemon=True,
+                         name='node-registration').start()
+
     app.run(host=Config.HOST, port=Config.PORT, debug=False)
