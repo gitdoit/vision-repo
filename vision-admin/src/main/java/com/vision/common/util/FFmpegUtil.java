@@ -56,7 +56,13 @@ public class FFmpegUtil {
                                     .replaceFirst("(?i)^ws://", "http://");
             log.debug("WebSocket 流转换为 HTTP: {} -> {}", streamUrl, effectiveUrl);
         }
-        // http:// / https:// 流无需额外参数
+
+        // 降低流分析时间：默认 analyzeduration=5s / probesize=5MB，对已知编码的直播流完全不需要
+        // HTTP-FLV / WS-FLV 的 FLV header 已包含编解码信息，500ms + 32KB 足够
+        command.add("-analyzeduration");
+        command.add("500000");
+        command.add("-probesize");
+        command.add("32768");
 
         command.add("-i");
         command.add(effectiveUrl);
