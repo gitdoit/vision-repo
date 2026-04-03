@@ -11,7 +11,9 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -35,14 +37,30 @@ public class TaskConditionEvaluator {
             .build();
 
     /**
+     * 记录每个 taskId:cameraId 最后评估的 frameId，防止同一物理帧被重复计数
+     */
+    private final Map<String, String> lastEvaluatedFrameId = new ConcurrentHashMap<>();
+
+    /**
      * 评估推理结果是否满足任务告警条件
      *
      * @param detections 推理检测结果
      * @param task       监测任务配置
      * @param cameraId   摄像头ID
+     * @param frameId    帧唯一标识（用于防止同帧重复计数）
      * @return 命中的目标列表，空列表表示未命中
      */
-    public List<Detection> evaluate(List<Detection> detections, MonitorTask task, String cameraId) {
+    public List<Detection> evaluate(List<Detection> detections, MonitorTask task, String cameraId, String frameId) {
+        // 帧去重: 同一物理帧不重复计数
+        String cacheKey = task.getId() + ":" + cameraId;
+        if (frameId != null) {
+            String lastFrameId = lastEvaluatedFrameId.get(cacheKey);
+            if (frameId.equals(lastFrameId)) {
+                log.debug("同一帧已评估过，跳过: taskId={}, cameraId={}, frameId={}", task.getId(), cameraId, frameId);
+                return List.of();
+            }
+            lastEvaluatedFrameId.put(cacheKey, frameId);
+        }
         if (detections == null || detections.isEmpty()) {
             resetFrameCount(task.getId(), cameraId);
             return List.of();
@@ -73,8 +91,8 @@ public class TaskConditionEvaluator {
             return matchedDetections;
         }
 
-        String cacheKey = task.getId() + ":" + cameraId;
-        AtomicInteger count = frameCountCache.get(cacheKey, k -> new AtomicInteger(0));
+        String countKey = task.getId() + ":" + cameraId;
+        AtomicInteger count = frameCountCache.get(countKey, k -> new AtomicInteger(0));
         int currentCount = count.incrementAndGet();
 
         if (currentCount >= requiredFrames) {
@@ -134,5 +152,6 @@ public class TaskConditionEvaluator {
      */
     public void clearTaskCache(String taskId) {
         frameCountCache.asMap().keySet().removeIf(key -> key.startsWith(taskId + ":"));
+        lastEvaluatedFrameId.keySet().removeIf(key -> key.startsWith(taskId + ":"));
     }
 }

@@ -41,6 +41,23 @@ public class ThreadPoolConfig {
     }
 
     /**
+     * 预截帧工作线程池（IO 密集型：FFmpeg 抓帧 + 文件上传）
+     */
+    @Bean("captureWorkerExecutor")
+    public Executor captureWorkerExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(8);
+        executor.setMaxPoolSize(30);
+        executor.setQueueCapacity(200);
+        executor.setThreadNamePrefix("capture-worker-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
+        executor.initialize();
+        return executor;
+    }
+
+    /**
      * 推理任务专用线程池
      */
     @Bean("inferenceExecutor")

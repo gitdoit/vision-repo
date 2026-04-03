@@ -19,9 +19,9 @@ import com.vision.task.dto.MonitorTaskVO;
 import com.vision.task.dto.TaskNodeInfo;
 import com.vision.task.entity.MonitorTask;
 import com.vision.task.mapper.MonitorTaskMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class MonitorTaskService extends ServiceImpl<MonitorTaskMapper, MonitorTask> {
 
     private final MonitorTaskMapper monitorTaskMapper;
@@ -44,6 +43,26 @@ public class MonitorTaskService extends ServiceImpl<MonitorTaskMapper, MonitorTa
     private final ModelMapper modelMapper;
     private final ModelService modelService;
     private final InferenceNodeMapper inferenceNodeMapper;
+    private final CaptureCoordinator captureCoordinator;
+    private final TaskScheduler taskScheduler;
+
+    public MonitorTaskService(MonitorTaskMapper monitorTaskMapper,
+                              CameraGroupMapper cameraGroupMapper,
+                              CameraGroupMappingMapper cameraGroupMappingMapper,
+                              ModelMapper modelMapper,
+                              ModelService modelService,
+                              InferenceNodeMapper inferenceNodeMapper,
+                              CaptureCoordinator captureCoordinator,
+                              @Lazy TaskScheduler taskScheduler) {
+        this.monitorTaskMapper = monitorTaskMapper;
+        this.cameraGroupMapper = cameraGroupMapper;
+        this.cameraGroupMappingMapper = cameraGroupMappingMapper;
+        this.modelMapper = modelMapper;
+        this.modelService = modelService;
+        this.inferenceNodeMapper = inferenceNodeMapper;
+        this.captureCoordinator = captureCoordinator;
+        this.taskScheduler = taskScheduler;
+    }
 
     /**
      * 分页查询监测任务
@@ -221,6 +240,9 @@ public class MonitorTaskService extends ServiceImpl<MonitorTaskMapper, MonitorTa
         task.setStatus("running");
         monitorTaskMapper.updateById(task);
 
+        // 触发截帧频率重算
+        captureCoordinator.recalculateFrequencies(getRunningTasks());
+
         log.info("启动监测任务: id={}, name={}", id, task.getName());
     }
 
@@ -239,6 +261,10 @@ public class MonitorTaskService extends ServiceImpl<MonitorTaskMapper, MonitorTa
 
         task.setStatus("stopped");
         monitorTaskMapper.updateById(task);
+
+        // 清理调度历史并重算截帧频率
+        taskScheduler.clearTaskDispatchHistory(id);
+        captureCoordinator.recalculateFrequencies(getRunningTasks());
 
         log.info("停止监测任务: id={}, name={}", id, task.getName());
     }

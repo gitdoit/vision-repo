@@ -23,8 +23,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * 职责:
  * - 定时扫描运行中的监测任务
+ * - 触发 CaptureCoordinator 重算截帧频率
  * - 检查时间窗口（生效时段、星期、日期范围）
- * - 展开分组 → 摄像头列表
+ * - 从 CaptureCoordinator 帧缓冲消费预截帧结果
  * - 按任务级 captureFrequency 检查频率
  * - 提交异步推理管道执行
  */
@@ -39,11 +40,17 @@ public class TaskScheduler {
     private final ModelService modelService;
     private final TaskInferencePipeline taskInferencePipeline;
     private final TaskConditionEvaluator conditionEvaluator;
+    private final CaptureCoordinator captureCoordinator;
 
     /**
      * 记录每个 taskId:cameraId 最后一次调度时间，用于判断频率
      */
     private final Map<String, LocalDateTime> lastDispatchTime = new ConcurrentHashMap<>();
+
+    /**
+     * 记录每个 taskId:cameraId 最后消费的 frameId，防止同帧重复消费
+     */
+    private final Map<String, String> lastConsumedFrameId = new ConcurrentHashMap<>();
 
     /**
      * 定时扫描运行中的监测任务
@@ -58,6 +65,9 @@ public class TaskScheduler {
                 log.debug("无运行中的监测任务");
                 return;
             }
+
+            // 触发预截帧频率重算
+            captureCoordinator.recalculateFrequencies(runningTasks);
 
             log.info("任务调度扫描: 运行中任务数={}", runningTasks.size());
             LocalDateTime now = LocalDateTime.now();
@@ -107,27 +117,55 @@ public class TaskScheduler {
         }
 
         // 4. 解析任务抓图频率
-        int frequencySeconds = parseFrequencySeconds(task.getCaptureFrequency());
+        int frequencySeconds = CaptureCoordinator.parseFrequencySeconds(task.getCaptureFrequency());
 
-        // 5. 遍历摄像头，按频率提交
+        // 5. 遍历摄像头，消费预截帧结果并提交推理
         for (String cameraId : cameraIds) {
             try {
-                if (shouldDispatch(taskId, cameraId, frequencySeconds, now)) {
-                    Camera camera = cameraMapper.selectById(cameraId);
-                    if (camera == null || !"online".equals(camera.getStatus())) {
-                        log.debug("摄像头不在线或不存在，跳过: cameraId={}", cameraId);
-                        continue;
-                    }
-
-                    // 记录调度时间
-                    lastDispatchTime.put(taskId + ":" + cameraId, now);
-
-                    log.info("调度推理: taskId={}, taskName={}, cameraId={}, cameraName={}",
-                            taskId, task.getName(), cameraId, camera.getName());
-
-                    // 异步执行推理管道
-                    executeAsync(task, camera, model);
+                if (!shouldDispatch(taskId, cameraId, frequencySeconds, now)) {
+                    continue;
                 }
+
+                // 从帧缓冲获取最新帧
+                CaptureFrame frame = captureCoordinator.getLatestFrame(cameraId);
+                if (frame == null || !frame.isSuccess()) {
+                    log.debug("无可用帧，跳过: taskId={}, cameraId={}", taskId, cameraId);
+                    continue;
+                }
+
+                // 校验帧新鲜度: 帧龄不超过任务频率的 1.5 倍
+                long frameAgeSeconds = Duration.between(frame.getCaptureTime(), now).getSeconds();
+                long maxAgeSeconds = (long) (frequencySeconds * 1.5);
+                if (frameAgeSeconds > maxAgeSeconds) {
+                    log.debug("帧已过期，跳过: taskId={}, cameraId={}, 帧龄={}s, 上限={}s",
+                            taskId, cameraId, frameAgeSeconds, maxAgeSeconds);
+                    continue;
+                }
+
+                // 校验帧唯一性: 同一帧不被同一任务重复消费
+                String dispatchKey = taskId + ":" + cameraId;
+                String lastFrameId = lastConsumedFrameId.get(dispatchKey);
+                if (frame.getFrameId().equals(lastFrameId)) {
+                    log.debug("帧已消费，跳过: taskId={}, cameraId={}, frameId={}", taskId, cameraId, frame.getFrameId());
+                    continue;
+                }
+
+                Camera camera = cameraMapper.selectById(cameraId);
+                if (camera == null) {
+                    log.debug("摄像头不存在，跳过: cameraId={}", cameraId);
+                    continue;
+                }
+
+                // 记录调度时间和消费帧ID
+                lastDispatchTime.put(dispatchKey, now);
+                lastConsumedFrameId.put(dispatchKey, frame.getFrameId());
+
+                log.info("调度推理: taskId={}, taskName={}, cameraId={}, cameraName={}, frameId={}",
+                        taskId, task.getName(), cameraId, camera.getName(), frame.getFrameId());
+
+                // 异步执行推理管道（使用预截帧结果）
+                executeAsync(task, camera, model, frame);
+
             } catch (Exception e) {
                 log.error("调度任务摄像头异常: taskId={}, cameraId={}", taskId, cameraId, e);
             }
@@ -138,8 +176,8 @@ public class TaskScheduler {
      * 异步执行推理管道
      */
     @Async("captureExecutor")
-    public void executeAsync(MonitorTask task, Camera camera, Model model) {
-        taskInferencePipeline.execute(task, camera, model);
+    public void executeAsync(MonitorTask task, Camera camera, Model model, CaptureFrame frame) {
+        taskInferencePipeline.execute(task, camera, model, frame);
     }
 
     /**
@@ -219,33 +257,10 @@ public class TaskScheduler {
 
     /**
      * 解析抓图频率字符串为秒数
-     * 复用 CaptureScheduler 的格式: 1s, 5s, 1min, 5min, 1h
+     * 委托给 CaptureCoordinator 的静态方法
      */
     private int parseFrequencySeconds(String frequency) {
-        if (frequency == null || frequency.isBlank()) {
-            return 300; // 默认 5 分钟
-        }
-
-        frequency = frequency.toLowerCase().trim();
-
-        try {
-            return Integer.parseInt(frequency);
-        } catch (NumberFormatException e) {
-            // 继续处理带单位格式
-        }
-
-        if (frequency.endsWith("sec")) {
-            return Integer.parseInt(frequency.replace("sec", "").trim());
-        } else if (frequency.endsWith("s")) {
-            return Integer.parseInt(frequency.replace("s", "").trim());
-        } else if (frequency.endsWith("min")) {
-            return Integer.parseInt(frequency.replace("min", "").trim()) * 60;
-        } else if (frequency.endsWith("h")) {
-            return Integer.parseInt(frequency.replace("h", "").trim()) * 3600;
-        }
-
-        log.warn("无法解析抓图频率: {}, 使用默认值 5 分钟", frequency);
-        return 300;
+        return CaptureCoordinator.parseFrequencySeconds(frequency);
     }
 
     /**
@@ -253,6 +268,7 @@ public class TaskScheduler {
      */
     public void clearTaskDispatchHistory(String taskId) {
         lastDispatchTime.keySet().removeIf(key -> key.startsWith(taskId + ":"));
+        lastConsumedFrameId.keySet().removeIf(key -> key.startsWith(taskId + ":"));
         conditionEvaluator.clearTaskCache(taskId);
     }
 }
